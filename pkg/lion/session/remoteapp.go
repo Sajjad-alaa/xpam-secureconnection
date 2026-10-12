@@ -39,8 +39,16 @@ type remoteAppSetting struct {
 	Args    string
 }
 
-func isRemoteAppAsset(asset *model.Asset) bool {
-	return asset != nil && asset.Platform.Name == RemoteAppPlatformName
+// isRemoteAppAsset uses the connection token's platform: the token's asset object does not
+// carry its platform, so asset.Platform is usually empty here.
+func isRemoteAppAsset(asset *model.Asset, platform *model.Platform) bool {
+	if asset == nil {
+		return false
+	}
+	if platform != nil && platform.Name != "" {
+		return platform.Name == RemoteAppPlatformName
+	}
+	return asset.Platform.Name == RemoteAppPlatformName
 }
 
 func infoString(asset *model.Asset, key string) string {
@@ -87,8 +95,8 @@ func remoteAppSettingOf(asset *model.Asset) remoteAppSetting {
 }
 
 // applyRemoteApp switches an RDP configuration to RemoteApp mode for Windows-RemoteApp assets.
-func applyRemoteApp(conf *guacd.Configuration, asset *model.Asset) {
-	if !isRemoteAppAsset(asset) {
+func applyRemoteApp(conf *guacd.Configuration, asset *model.Asset, platform *model.Platform) {
+	if !isRemoteAppAsset(asset, platform) {
 		return
 	}
 	setting := remoteAppSettingOf(asset)

@@ -35,12 +35,19 @@ func remoteAppAsset(info map[string]interface{}) *model.Asset {
 	return &model.Asset{ID: "a1", Name: "QGIS", Platform: model.BasePlatform{Name: RemoteAppPlatformName}, Info: info}
 }
 
+// Like the real connection token: the asset has no platform, the token's platform does.
+func remoteAppAssetNoPlatform(info map[string]interface{}) *model.Asset {
+	return &model.Asset{ID: "a1", Name: "QGIS", Info: info}
+}
+
+var remoteAppTokenPlatform = &model.Platform{Name: RemoteAppPlatformName}
+
 func TestApplyRemoteApp(t *testing.T) {
 	conf := guacd.NewConfiguration()
 	conf.SetParameter(guacd.RDPSecurity, SecurityAny)
-	applyRemoteApp(&conf, remoteAppAsset(map[string]interface{}{
+	applyRemoteApp(&conf, remoteAppAssetNoPlatform(map[string]interface{}{
 		"remote_app": "qgis-bin", "remote_app_dir": `C:\QGIS`, "remote_app_args": "--noplugins",
-	}))
+	}), remoteAppTokenPlatform)
 	want := map[string]string{
 		guacd.RDPRemoteApp: "||qgis-bin", guacd.RDPRemoteAppDir: `C:\QGIS`,
 		guacd.RDPRemoteAppArgs: "--noplugins", guacd.RDPSecurity: SecurityNla,
@@ -56,7 +63,7 @@ func TestApplyRemoteApp(t *testing.T) {
 func TestRemoteAppNeverFallsBackToDesktop(t *testing.T) {
 	for _, info := range []map[string]interface{}{nil, {}, {"remote_app": ""}, {"remote_app": "bad;name"}, {"remote_app": 42}} {
 		conf := guacd.NewConfiguration()
-		applyRemoteApp(&conf, remoteAppAsset(info))
+		applyRemoteApp(&conf, remoteAppAssetNoPlatform(info), remoteAppTokenPlatform)
 		if conf.Parameters[guacd.RDPRemoteApp] != remoteAppUnavailable {
 			t.Errorf("info %v: remote-app = %q; want the unavailable placeholder", info, conf.Parameters[guacd.RDPRemoteApp])
 		}
@@ -67,7 +74,7 @@ func TestNormalWindowsAssetUntouched(t *testing.T) {
 	conf := guacd.NewConfiguration()
 	conf.SetParameter(guacd.RDPSecurity, SecurityAny)
 	asset := &model.Asset{Platform: model.BasePlatform{Name: "Windows"}, Info: map[string]interface{}{"remote_app": "||x"}}
-	applyRemoteApp(&conf, asset)
+	applyRemoteApp(&conf, asset, &model.Platform{Name: "Windows"})
 	if _, set := conf.Parameters[guacd.RDPRemoteApp]; set || conf.Parameters[guacd.RDPSecurity] != SecurityAny {
 		t.Errorf("non-RemoteApp asset was modified: %v", conf.Parameters)
 	}
