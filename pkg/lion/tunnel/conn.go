@@ -61,6 +61,9 @@ type Connection struct {
 
 	clipboardFilter *clipboardPolicyFilter
 
+	// XPAM: set for native RemoteApp sessions; drops shell-escape key combinations
+	remoteAppKeys *remoteAppKeyFilter
+
 	done chan struct{}
 
 	traceLock sync.Mutex
@@ -282,6 +285,11 @@ func (t *Connection) Run(ctx *gin.Context) (err error) {
 						break
 					}
 					logger.Debugf("Session[%s] send guacamole server message when locked status", t)
+					continue
+				}
+
+				if t.remoteAppKeys != nil && ret.Opcode == guacd.InstructionKey && !t.remoteAppKeys.allow(ret.Args) {
+					logger.Infof("Session[%s] RemoteApp: dropped blocked key %v", t, ret.Args)
 					continue
 				}
 

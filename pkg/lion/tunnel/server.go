@@ -162,7 +162,8 @@ func (g *GuacamoleTunnelServer) Connect(ctx *gin.Context) {
 		_ = ws.WriteMessage(websocket.TextMessage, []byte(errIns.String()))
 		return
 	}
-	p, _ := json.Marshal(tunnelSession)
+	// The browser copy omits asset info (hardware inventory, program paths)
+	p, _ := json.Marshal(tunnelSession.ForBrowser())
 	ins := NewJmsEventInstruction("session", string(p))
 	if err = ws.WriteMessage(websocket.TextMessage, []byte(ins.String())); err != nil {
 		logger.Errorf("Write session message err: %+v", err)
@@ -264,6 +265,9 @@ func (g *GuacamoleTunnelServer) Connect(ctx *gin.Context) {
 	conn.outputFilter = &outFilter
 	conn.inputFilter = &inputFilter
 	conn.clipboardFilter = newClipboardPolicyFilter(tunnelSession.ActionPerm)
+	if tunnelSession.IsNativeRemoteApp() {
+		conn.remoteAppKeys = newRemoteAppKeyFilter()
+	}
 	logger.Infof("Session[%s] connect success", sessionId)
 	g.Cache.Add(&conn)
 	replayRecorder := &ReplayRecorder{

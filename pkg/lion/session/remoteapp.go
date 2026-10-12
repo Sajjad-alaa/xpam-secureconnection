@@ -22,9 +22,28 @@ const RemoteAppPlatformName = "Windows-RemoteApp"
 const remoteAppUnavailable = "||xpam-remoteapp-not-configured"
 
 var (
-	controlChars = regexp.MustCompile(`[\x00-\x1f\x7f]`)
+	controlChars   = regexp.MustCompile(`[\x00-\x1f\x7f]`)
 	remoteAppAlias = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$`)
+	// Local absolute path (drive letter); UNC paths could load a program from another host.
+	localWinPath = regexp.MustCompile(`^[A-Za-z]:\\[^/:*?"<>|]*$`)
 )
+
+// Shells, script hosts and admin tools; kept in sync with DENIED_PROGRAMS in core
+// (apps/xpack/remote_app.py) so koko refuses them even if core validation were bypassed.
+var deniedRemoteAppPrograms = map[string]bool{
+	"cmd": true, "command": true, "powershell": true, "powershell_ise": true, "pwsh": true,
+	"wsl": true, "bash": true, "conhost": true, "explorer": true, "taskmgr": true, "mmc": true,
+	"regedit": true, "regedt32": true, "control": true, "msconfig": true, "servermanager": true,
+	"wscript": true, "cscript": true, "mshta": true, "rundll32": true, "regsvr32": true,
+	"msiexec": true, "wmic": true, "runas": true, "certutil": true, "bitsadmin": true,
+	"schtasks": true, "sc": true, "net": true, "net1": true, "netsh": true, "reg": true, "at": true,
+}
+
+func isDeniedRemoteAppProgram(name string) bool {
+	base := strings.ToLower(strings.TrimSpace(name))
+	base = strings.TrimSuffix(base, ".exe")
+	return deniedRemoteAppPrograms[base]
+}
 
 // RemoteApp windows look much better with these; desktops keep the bandwidth-saving defaults.
 var remoteAppDisplayParams = map[string]string{
@@ -45,10 +64,15 @@ func isRemoteAppAsset(asset *model.Asset, platform *model.Platform) bool {
 	if asset == nil {
 		return false
 	}
-	if platform != nil && platform.Name != "" {
-		return platform.Name == RemoteAppPlatformName
+	if platform != nil && platform.Name == RemoteAppPlatformName {
+		return true
 	}
-	return asset.Platform.Name == RemoteAppPlatformName
+	if asset.Platform.Name == RemoteAppPlatformName {
+		return true
+	}
+	// Fail closed: a configured program makes the asset RemoteApp-only even if the platform
+	// name does not match (core clears these keys when an asset leaves the platform).
+	return infoString(asset, "remote_app") != ""
 }
 
 func infoString(asset *model.Asset, key string) string {
@@ -69,10 +93,17 @@ func normalizeRemoteAppProgram(program string) (string, bool) {
 		return "", false
 	}
 	if strings.ContainsAny(program, `\/`) {
-		return strings.TrimLeft(program, "|"), true
+		program = strings.ReplaceAll(strings.TrimLeft(program, "|"), "/", `\`)
+		if !localWinPath.MatchString(program) || !strings.HasSuffix(strings.ToLower(program), ".exe") {
+			return "", false
+		}
+		if isDeniedRemoteAppProgram(program[strings.LastIndex(program, `\`)+1:]) {
+			return "", false
+		}
+		return program, true
 	}
 	alias := strings.TrimLeft(program, "|")
-	if !remoteAppAlias.MatchString(alias) {
+	if !remoteAppAlias.MatchString(alias) || isDeniedRemoteAppProgram(alias) {
 		return "", false
 	}
 	return "||" + alias, true
@@ -85,11 +116,19 @@ func remoteAppSettingOf(asset *model.Asset) remoteAppSetting {
 		program = remoteAppUnavailable
 	}
 	setting := remoteAppSetting{Program: program}
-	if dir := infoString(asset, "remote_app_dir"); dir != "" && !controlChars.MatchString(dir) {
-		setting.Dir = strings.Trim(dir, `"`)
+	if dir := strings.Trim(infoString(asset, "remote_app_dir"), `"`); dir != "" {
+		if localWinPath.MatchString(dir) {
+			setting.Dir = dir
+		} else {
+			logger.Errorf("RemoteApp asset %s: ignoring invalid working directory", asset.Name)
+		}
 	}
-	if args := infoString(asset, "remote_app_args"); args != "" && !controlChars.MatchString(args) {
-		setting.Args = args
+	if args := infoString(asset, "remote_app_args"); args != "" {
+		if !controlChars.MatchString(args) && !strings.Contains(args, "%") && !strings.Contains(args, `\\`) {
+			setting.Args = args
+		} else {
+			logger.Errorf("RemoteApp asset %s: ignoring unsafe arguments", asset.Name)
+		}
 	}
 	return setting
 }
@@ -121,4 +160,20 @@ func remoteAppDisplayName(asset *model.Asset) string {
 		return asset.Name
 	}
 	return name
+}
+
+// ForBrowser returns a copy that is safe to send to the web client: the asset info (gathered
+// hardware inventory, custom info such as program paths) is only needed inside koko.
+func (s TunnelSession) ForBrowser() TunnelSession {
+	if s.Asset != nil && s.Asset.Info != nil {
+		asset := *s.Asset
+		asset.Info = nil
+		s.Asset = &asset
+	}
+	return s
+}
+
+// IsNativeRemoteApp reports a Windows-RemoteApp session (not a JumpServer applet session).
+func (s TunnelSession) IsNativeRemoteApp() bool {
+	return s.AppletOpts == nil && isRemoteAppAsset(s.Asset, s.Platform)
 }

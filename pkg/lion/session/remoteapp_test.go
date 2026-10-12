@@ -73,10 +73,57 @@ func TestRemoteAppNeverFallsBackToDesktop(t *testing.T) {
 func TestNormalWindowsAssetUntouched(t *testing.T) {
 	conf := guacd.NewConfiguration()
 	conf.SetParameter(guacd.RDPSecurity, SecurityAny)
-	asset := &model.Asset{Platform: model.BasePlatform{Name: "Windows"}, Info: map[string]interface{}{"remote_app": "||x"}}
+	asset := &model.Asset{Platform: model.BasePlatform{Name: "Windows"}, Info: map[string]interface{}{"cpu_model": "x"}}
 	applyRemoteApp(&conf, asset, &model.Platform{Name: "Windows"})
 	if _, set := conf.Parameters[guacd.RDPRemoteApp]; set || conf.Parameters[guacd.RDPSecurity] != SecurityAny {
 		t.Errorf("non-RemoteApp asset was modified: %v", conf.Parameters)
+	}
+}
+
+func TestConfiguredProgramFailsClosed(t *testing.T) {
+	// A program in the asset info keeps the asset app-only even if the platform name differs
+	conf := guacd.NewConfiguration()
+	asset := &model.Asset{Info: map[string]interface{}{"remote_app": "||qgis-bin"}}
+	applyRemoteApp(&conf, asset, &model.Platform{Name: "Windows-RemoteApp-Copy"})
+	if conf.Parameters[guacd.RDPRemoteApp] != "||qgis-bin" {
+		t.Errorf("asset with a configured program must stay RemoteApp, got %v", conf.Parameters)
+	}
+}
+
+func TestDeniedAndUnsafePrograms(t *testing.T) {
+	for _, p := range []string{
+		`C:\Windows\System32\cmd.exe`, `||powershell`, `Explorer.EXE`, `||TaskMgr`, `C:\Tools\pwsh.exe`,
+		`\\evil\share\app.exe`, `C:\tools\run.bat`, `relative\app.exe`,
+	} {
+		if got, ok := normalizeRemoteAppProgram(p); ok {
+			t.Errorf("program %q must be refused, got %q", p, got)
+		}
+	}
+}
+
+func TestUnsafeArgsAndDirDropped(t *testing.T) {
+	s := remoteAppSettingOf(remoteAppAssetNoPlatform(map[string]interface{}{
+		"remote_app": "||qgis-bin", "remote_app_args": "%COMSPEC% /c x", "remote_app_dir": `\\host\share`,
+	}))
+	if s.Args != "" || s.Dir != "" {
+		t.Errorf("unsafe args/dir must be dropped, got args=%q dir=%q", s.Args, s.Dir)
+	}
+	s = remoteAppSettingOf(remoteAppAssetNoPlatform(map[string]interface{}{
+		"remote_app": "||qgis-bin", "remote_app_args": `--project "C:\data\a b.qgz"`, "remote_app_dir": `C:\QGIS`,
+	}))
+	if s.Args == "" || s.Dir != `C:\QGIS` {
+		t.Errorf("safe args/dir must be kept, got args=%q dir=%q", s.Args, s.Dir)
+	}
+}
+
+func TestForBrowserOmitsAssetInfo(t *testing.T) {
+	asset := remoteAppAssetNoPlatform(map[string]interface{}{"remote_app": "||x", "serial": "ABC"})
+	view := TunnelSession{Asset: asset}.ForBrowser()
+	if view.Asset.Info != nil {
+		t.Error("browser copy must not include asset info")
+	}
+	if asset.Info == nil {
+		t.Error("original asset info must be kept for koko")
 	}
 }
 
