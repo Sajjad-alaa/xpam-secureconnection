@@ -7,6 +7,7 @@ import (
 
 	"github.com/jumpserver-dev/sdk-go/service"
 	"github.com/jumpserver/koko/pkg/auth"
+	"github.com/jumpserver/koko/pkg/common"
 	"github.com/jumpserver/koko/pkg/config"
 	"github.com/jumpserver/koko/pkg/lion"
 	"github.com/jumpserver/koko/pkg/lion/middleware"
@@ -27,7 +28,8 @@ func createRouter(
 	eng := gin.New()
 	eng.Use(gin.Recovery())
 	eng.Use(gin.Logger())
-	kokoGroup := eng.Group("/koko")
+	// XPAM: public path is /secureconnection (nginx maps the legacy /koko/ prefix onto it)
+	kokoGroup := eng.Group(common.URLPrefix)
 	kokoGroup.GET("/health/", webSrv.HealthStatusHandler)
 	wsGroup := kokoGroup.Group("/ws/")
 	{

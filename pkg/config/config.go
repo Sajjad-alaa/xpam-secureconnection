@@ -276,7 +276,7 @@ func loadConfigFromFile(path string, conf *Config) {
 }
 
 const (
-	prefixName = "[KoKo]-"
+	prefixName = "[SecureConnection]-"
 
 	hostEnvKey = "SERVER_HOSTNAME"
 
@@ -286,7 +286,7 @@ const (
 /*
 SERVER_HOSTNAME: 环境变量名，可用于自定义默认注册名称的前缀
 default name rule:
-[Koko]-{SERVER_HOSTNAME}-{HOSTNAME}-RandomStr
+[SecureConnection]-{SERVER_HOSTNAME}-{HOSTNAME}-RandomStr
  or
 [Koko]-{HOSTNAME}-RandomStr
 */

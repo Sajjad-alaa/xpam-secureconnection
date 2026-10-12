@@ -31,7 +31,7 @@ services:
     volumes:
       - ./data:/opt/koko/data
     healthcheck:
-      test: [CMD, check, http://127.0.0.1:5050/koko/health/]
+      test: [CMD, check, http://127.0.0.1:5050/secureconnection/health/]
       interval: 10s
       timeout: 3s
       retries: 10

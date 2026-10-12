@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/jumpserver-dev/sdk-go/common"
+	kokocommon "github.com/jumpserver/koko/pkg/common"
 	"github.com/jumpserver-dev/sdk-go/model"
 	"github.com/jumpserver-dev/sdk-go/service"
 	"github.com/jumpserver-dev/sdk-go/service/panda"
@@ -53,7 +54,7 @@ func NewRuntime(jmsService *service.JMService) *Runtime {
 }
 
 func (r *Runtime) RegisterRoutes(engine *gin.Engine) {
-	lionGroup := engine.Group("/koko/lion")
+	lionGroup := engine.Group(kokocommon.DesktopURLPrefix)
 	lionGroup.Use(middleware.CORS())
 	lionGroup.OPTIONS("/*path", func(ctx *gin.Context) {
 		ctx.Status(http.StatusNoContent)

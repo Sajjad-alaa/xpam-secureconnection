@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jumpserver-dev/sdk-go/model"
 	"github.com/jumpserver-dev/sdk-go/service"
+	"github.com/jumpserver/koko/pkg/common"
 	"github.com/jumpserver/koko/pkg/auth"
 	"github.com/jumpserver/koko/pkg/config"
 	"github.com/jumpserver/koko/pkg/lion/session"
@@ -57,9 +58,9 @@ func TestMonitorDispatch(t *testing.T) {
 		allowed = tc.allowed
 		for _, ws := range []bool{false, true} {
 			w := httptest.NewRecorder()
-			path := "/koko/api/monitor/" + tc.sid + "/"
+			path := common.URLPrefix + "/api/monitor/" + tc.sid + "/"
 			if ws {
-				path = "/koko/ws/monitor/"
+				path = common.URLPrefix + "/ws/monitor/"
 			}
 			req := httptest.NewRequest(http.MethodGet, path+"?target_id="+tc.sid+"&type=connect&token=ignored&ticket="+ticket.ID, nil)
 			status := http.StatusOK
