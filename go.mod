@@ -171,3 +171,5 @@ require (
 )
 
 replace github.com/gliderlabs/ssh => github.com/jumpserver-dev/ssh v0.3.11
+
+replace github.com/jumpserver-dev/sdk-go => ./third_party/sdk-go

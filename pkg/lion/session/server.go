@@ -328,6 +328,9 @@ func (s *Server) Create(ctx *gin.Context, opts ...TunnelOption) (sess TunnelSess
 			opt.appletOpt.Host.String(),
 			opt.appletOpt.Account.String(),
 			opt.appletOpt.Applet.Name)
+	} else if opt.Asset != nil && isRemoteAppAsset(opt.Asset) {
+		// XPAM: tell the web UI this is a RemoteApp session (window dock, app name)
+		sess.RemoteApp = &model.Applet{Id: opt.Asset.ID, Name: remoteAppDisplayName(opt.Asset)}
 	}
 
 	sess.User = opt.User
