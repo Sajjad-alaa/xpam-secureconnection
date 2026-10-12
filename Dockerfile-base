@@ -81,5 +81,7 @@ ENV PKG_CONFIG_PATH=/opt/libghostty-vt/share/pkgconfig
 ENV GO111MODULE=on
 
 COPY go.mod go.sum ./
+# XPAM: go.mod replaces sdk-go with this vendored copy
+COPY third_party/sdk-go ./third_party/sdk-go
 
 RUN go mod download -x

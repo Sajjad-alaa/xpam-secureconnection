@@ -135,3 +135,45 @@ func TestRemoteAppDisplayName(t *testing.T) {
 		t.Errorf("display name = %q; want notepad", n)
 	}
 }
+
+func TestRemoteAppKeepsNlaExt(t *testing.T) {
+	conf := guacd.NewConfiguration()
+	conf.SetParameter(guacd.RDPSecurity, SecurityNlaExt)
+	applyRemoteApp(&conf, remoteAppAssetNoPlatform(map[string]interface{}{"remote_app": "||x"}), remoteAppTokenPlatform)
+	if conf.Parameters[guacd.RDPSecurity] != SecurityNlaExt {
+		t.Errorf("nla-ext must be kept, got %q", conf.Parameters[guacd.RDPSecurity])
+	}
+}
+
+func TestIsNativeRemoteAppExcludesAppletsAndVirtualApps(t *testing.T) {
+	asset := remoteAppAssetNoPlatform(map[string]interface{}{"remote_app": "||x"})
+	base := TunnelSession{Asset: asset, Platform: remoteAppTokenPlatform}
+	if !base.IsNativeRemoteApp() {
+		t.Error("native RemoteApp session not detected")
+	}
+	applet := base
+	applet.AppletOpts = &model.AppletOption{}
+	virtual := base
+	virtual.VirtualAppOpts = &model.VirtualAppContainer{}
+	if applet.IsNativeRemoteApp() || virtual.IsNativeRemoteApp() {
+		t.Error("applet / virtual-app sessions must not be treated as native RemoteApp")
+	}
+}
+
+func TestRemoteAppProgramBoundaries(t *testing.T) {
+	long := "a"
+	for len(long) < 64 {
+		long += "b"
+	}
+	if _, ok := normalizeRemoteAppProgram(long); !ok {
+		t.Error("64-char alias must be accepted")
+	}
+	if _, ok := normalizeRemoteAppProgram(long + "c"); ok {
+		t.Error("65-char alias must be refused")
+	}
+	for _, p := range []string{"||", "|", "   "} {
+		if _, ok := normalizeRemoteAppProgram(p); ok {
+			t.Errorf("program %q must be refused", p)
+		}
+	}
+}

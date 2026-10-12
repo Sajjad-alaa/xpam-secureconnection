@@ -8,4 +8,7 @@ config.yml
 .env
 .env.*
 third_party/
+# XPAM: vendored SDK referenced by the go.mod replace directive
+!third_party/sdk-go
+!third_party/sdk-go/**
 .DS_Store

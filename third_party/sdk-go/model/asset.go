@@ -38,7 +38,7 @@ type Asset struct {
 	SecretInfo SecretInfo   `json:"secret_info"`
 	Platform   BasePlatform `json:"platform"`
 
-	// XPAM: generic asset info sent by core in the connection token (gathered + custom info),
+	// XPAM: generic asset info sent by core in the connection token (gathered + custom + spec info),
 	// e.g. remote_app / remote_app_dir / remote_app_args for native RDP RemoteApp assets.
 	Info map[string]interface{} `json:"info,omitempty"`
 

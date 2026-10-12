@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jumpserver-dev/sdk-go/model"
+	"github.com/spf13/viper"
 
 	"github.com/jumpserver/koko/pkg/lion/guacd"
 	"github.com/jumpserver/koko/pkg/logger"
@@ -22,8 +23,8 @@ const RemoteAppPlatformName = "Windows-RemoteApp"
 const remoteAppUnavailable = "||xpam-remoteapp-not-configured"
 
 var (
-	controlChars   = regexp.MustCompile(`[\x00-\x1f\x7f]`)
-	remoteAppAlias = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$`)
+	remoteAppControlChars = regexp.MustCompile(`[\x00-\x1f\x7f]`)
+	remoteAppAlias        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$`)
 	// Local absolute path (drive letter); UNC paths could load a program from another host.
 	localWinPath = regexp.MustCompile(`^[A-Za-z]:\\[^/:*?"<>|]*$`)
 )
@@ -46,10 +47,11 @@ func isDeniedRemoteAppProgram(name string) bool {
 }
 
 // RemoteApp windows look much better with these; desktops keep the bandwidth-saving defaults.
-var remoteAppDisplayParams = map[string]string{
-	guacd.RDPEnableFontSmoothing:  BoolTrue,
-	guacd.RDPEnableTheming:        BoolTrue,
-	guacd.RDPEnableFullWindowDrag: BoolTrue,
+// Applied only when the operator has not set the corresponding environment variable.
+var remoteAppDisplayDefaults = map[string]string{ // env key -> guacd parameter
+	"JUMPSERVER_ENABLE_FONT_SMOOTHING":   guacd.RDPEnableFontSmoothing,
+	"JUMPSERVER_ENABLE_THEMING":          guacd.RDPEnableTheming,
+	"JUMPSERVER_ENABLE_FULL_WINDOW_DRAG": guacd.RDPEnableFullWindowDrag,
 }
 
 type remoteAppSetting struct {
@@ -89,7 +91,7 @@ func infoString(asset *model.Asset, key string) string {
 // prefix (otherwise Windows looks the path up as an alias and rejects it), aliases with it.
 func normalizeRemoteAppProgram(program string) (string, bool) {
 	program = strings.TrimSpace(strings.Trim(strings.TrimSpace(program), `"`))
-	if program == "" || controlChars.MatchString(program) {
+	if program == "" || remoteAppControlChars.MatchString(program) {
 		return "", false
 	}
 	if strings.ContainsAny(program, `\/`) {
@@ -110,9 +112,15 @@ func normalizeRemoteAppProgram(program string) (string, bool) {
 }
 
 func remoteAppSettingOf(asset *model.Asset) remoteAppSetting {
+	return remoteAppSettingWithLog(asset, true)
+}
+
+func remoteAppSettingWithLog(asset *model.Asset, logProblems bool) remoteAppSetting {
 	program, ok := normalizeRemoteAppProgram(infoString(asset, "remote_app"))
 	if !ok {
-		logger.Errorf("RemoteApp asset %s (%s) has no valid program configured", asset.Name, asset.ID)
+		if logProblems {
+			logger.Errorf("RemoteApp asset %s (%s) has no valid program configured", asset.Name, asset.ID)
+		}
 		program = remoteAppUnavailable
 	}
 	setting := remoteAppSetting{Program: program}
@@ -120,14 +128,18 @@ func remoteAppSettingOf(asset *model.Asset) remoteAppSetting {
 		if localWinPath.MatchString(dir) {
 			setting.Dir = dir
 		} else {
-			logger.Errorf("RemoteApp asset %s: ignoring invalid working directory", asset.Name)
+			if logProblems {
+				logger.Errorf("RemoteApp asset %s: ignoring invalid working directory", asset.Name)
+			}
 		}
 	}
 	if args := infoString(asset, "remote_app_args"); args != "" {
-		if !controlChars.MatchString(args) && !strings.Contains(args, "%") && !strings.Contains(args, `\\`) {
+		if !remoteAppControlChars.MatchString(args) && !strings.Contains(args, "%") && !strings.Contains(args, `\\`) {
 			setting.Args = args
 		} else {
-			logger.Errorf("RemoteApp asset %s: ignoring unsafe arguments", asset.Name)
+			if logProblems {
+				logger.Errorf("RemoteApp asset %s: ignoring unsafe arguments", asset.Name)
+			}
 		}
 	}
 	return setting
@@ -141,21 +153,30 @@ func applyRemoteApp(conf *guacd.Configuration, asset *model.Asset, platform *mod
 	setting := remoteAppSettingOf(asset)
 	// NLA checks the credentials before the session starts, so a wrong password is reported
 	// as an authentication error (769) instead of an invisible Windows logon screen.
-	conf.SetParameter(guacd.RDPSecurity, SecurityNla)
+	if current := conf.Parameters[guacd.RDPSecurity]; current != SecurityNla && current != SecurityNlaExt {
+		if current != SecurityAny {
+			logger.Infof("RemoteApp asset %s: RDP security %q replaced by nla", asset.Name, current)
+		}
+		conf.SetParameter(guacd.RDPSecurity, SecurityNla)
+	}
 	conf.SetParameter(guacd.RDPRemoteApp, setting.Program)
 	conf.SetParameter(guacd.RDPRemoteAppDir, setting.Dir)
 	conf.SetParameter(guacd.RDPRemoteAppArgs, setting.Args)
-	for key, value := range remoteAppDisplayParams {
-		conf.SetParameter(key, value)
+	for envKey, param := range remoteAppDisplayDefaults {
+		if viper.GetString(envKey) == "" {
+			conf.SetParameter(param, BoolTrue)
+		}
 	}
 	logger.Infof("RemoteApp session for asset %s: program %s", asset.Name, setting.Program)
 }
 
 // remoteAppDisplayName is the program name shown in the web UI (e.g. "qgis-bin", "notepad").
 func remoteAppDisplayName(asset *model.Asset) string {
-	program := remoteAppSettingOf(asset).Program
+	program := remoteAppSettingWithLog(asset, false).Program
 	name := path.Base(strings.ReplaceAll(strings.TrimLeft(program, "|"), `\`, "/"))
-	name = strings.TrimSuffix(strings.TrimSuffix(name, ".exe"), ".EXE")
+	if strings.EqualFold(path.Ext(name), ".exe") {
+		name = name[:len(name)-len(path.Ext(name))]
+	}
 	if name == "" || program == remoteAppUnavailable {
 		return asset.Name
 	}
@@ -175,5 +196,5 @@ func (s TunnelSession) ForBrowser() TunnelSession {
 
 // IsNativeRemoteApp reports a Windows-RemoteApp session (not a JumpServer applet session).
 func (s TunnelSession) IsNativeRemoteApp() bool {
-	return s.AppletOpts == nil && isRemoteAppAsset(s.Asset, s.Platform)
+	return s.AppletOpts == nil && s.VirtualAppOpts == nil && isRemoteAppAsset(s.Asset, s.Platform)
 }

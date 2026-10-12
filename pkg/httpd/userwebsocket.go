@@ -267,7 +267,10 @@ func (userCon *UserWebsocket) buildConnectInfo() websocketConnectInfo {
 	connectInfo.Setting = userCon.setting
 
 	if userCon.ConnectToken != nil {
-		connectInfo.Asset = &userCon.ConnectToken.Asset
+		// The browser copy omits asset info (hardware inventory, custom info); only koko needs it
+		asset := userCon.ConnectToken.Asset
+		asset.Info = nil
+		connectInfo.Asset = &asset
 		permission := userCon.ConnectToken.Actions.Permission()
 		connectInfo.Permission = &permission
 		connectInfo.ClipboardPolicy = userCon.ConnectToken.ClipboardPolicy

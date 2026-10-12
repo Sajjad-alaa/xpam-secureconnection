@@ -86,7 +86,11 @@ func (s TunnelSession) configurationRDP() guacd.Configuration {
 		TerminalConfig: s.TerminalConfig,
 		ActionsPerm:    s.ActionPerm,
 	}
-	return rdpConf.GetGuacdConfiguration()
+	conf := rdpConf.GetGuacdConfiguration()
+	// XPAM: Windows-RemoteApp assets launch only their configured program (native RDP path
+	// only; applet and virtual-app sessions never get here)
+	applyRemoteApp(&conf, s.Asset, s.Platform)
+	return conf
 }
 
 func (s TunnelSession) configurationRemoteAppRDP() guacd.Configuration {
