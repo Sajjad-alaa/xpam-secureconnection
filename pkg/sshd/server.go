@@ -68,12 +68,13 @@ func NewSSHServer(jmsService *service.JMService) *Server {
 	if err != nil {
 		logger.Fatalf("Parse Terminal private key failed: %s\n", err)
 	}
+	singer = modernHostSigner(singer)
 	sshHandler := handler.NewServer(termCfg, jmsService)
 	srv := &ssh.Server{
 		Addr:             addr,
 		PasswordHandler:  sshHandler.PasswordAuth,
 		PublicKeyHandler: sshHandler.PublicKeyAuth,
-		Version:          "JumpServer",
+		Version:          "XPAM",
 		HostSigners:      []ssh.Signer{singer},
 		MaxSessions:      int32(cf.SshMaxSessions),
 		ServerConfigCallback: func(ctx ssh.Context) *gossh.ServerConfig {
@@ -117,6 +118,25 @@ type localForwardChannelData struct {
 	OriginPort uint32
 }
 
+// modernHostSigner stops an RSA host key from being offered with the SHA-1 based
+// "ssh-rsa" signature; only rsa-sha2-256 and rsa-sha2-512 remain. Other key types are unchanged.
+func modernHostSigner(signer ssh.Signer) ssh.Signer {
+	if signer.PublicKey().Type() != gossh.KeyAlgoRSA {
+		return signer
+	}
+	algSigner, ok := signer.(gossh.AlgorithmSigner)
+	if !ok {
+		return signer
+	}
+	restricted, err := gossh.NewSignerWithAlgorithms(algSigner,
+		[]string{gossh.KeyAlgoRSASHA512, gossh.KeyAlgoRSASHA256})
+	if err != nil {
+		logger.Errorf("Restrict SSH host key algorithms failed: %s", err)
+		return signer
+	}
+	return restricted
+}
+
 func DefaultSSHSrvConfig() gossh.Config {
 	cfg := gossh.Config{}
 	cfg.SetDefaults()
@@ -129,6 +149,7 @@ func DefaultSSHSrvConfig() gossh.Config {
 	}
 	insecureMacs := map[string]struct{}{
 		gossh.InsecureHMACSHA196: {},
+		gossh.HMACSHA1:           {},
 	}
 	filterMacs := make([]string, 0, len(macs))
 	for _, mac := range macs {
