@@ -273,6 +273,51 @@ def autofill(session, cdp, sid):
     return verify_login(session, cdp, sid, ps)
 
 
+# Covers the site while XPAM signs in: the user never sees (or types into) the login form. Real key
+# presses are swallowed; XPAM's own typing and clicks are scripted, so they still work.
+SIGNIN_OVERLAY_JS = r"""(() => {
+  if (window.top !== window || window.__xpamOverlay) return;
+  window.__xpamOverlay = true;
+  const add = () => {
+    if (window.__xpamDone || !document.documentElement || document.getElementById('__xpam_signin')) return;
+    const d = document.createElement('div');
+    d.id = '__xpam_signin';
+    d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#1e1e1e;color:#ddd;display:flex;' +
+      'align-items:center;justify-content:center;font:18px sans-serif;cursor:progress';
+    d.textContent = 'Signing in\u2026';
+    document.documentElement.appendChild(d);
+  };
+  new MutationObserver(add).observe(document, {childList: true, subtree: true});
+  for (const t of ['keydown', 'keypress', 'keyup', 'paste']) {
+    window.addEventListener(t, e => {
+      if (e.isTrusted && !window.__xpamDone) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+  }
+  add();
+})()"""
+
+
+def show_overlay(session, cdp, sid):
+    try:
+        cdp.call('Page.enable', {}, session_id=sid)
+        res = cdp.call('Page.addScriptToEvaluateOnNewDocument', {'source': SIGNIN_OVERLAY_JS}, session_id=sid)
+        session.overlay = res.get('identifier')
+    except Exception as e:
+        log(session.id, 'sign-in screen not available:', e.__class__.__name__)
+
+
+def hide_overlay(session, cdp, sid, keep_screen=False):
+    if not getattr(session, 'overlay', None):
+        return
+    try:
+        cdp.call('Page.removeScriptToEvaluateOnNewDocument', {'identifier': session.overlay}, session_id=sid)
+        if not keep_screen:  # (kept when the page is replaced next anyway)
+            evaluate(cdp, "window.__xpamDone = true; document.getElementById('__xpam_signin')?.remove()", sid)
+    except Exception:
+        pass
+    session.overlay = None
+
+
 def verify_login(session, cdp, sid, password_selector):
     """
     'ok' when the sign-in worked: the success selector appeared, or (without one) the login form is
@@ -284,15 +329,20 @@ def verify_login(session, cdp, sid, password_selector):
     if not success and not password_selector:
         log(session.id, 'auto-login done (not verified: no success selector)')
         return 'ok'
-    cdp.pump(3)  # the form is sent and the next page loads
-    end, waiting_for_user = time.time() + 20, False
+    cdp.pump(2)  # the form is sent and the next page loads
+    start = time.time()
+    end, waiting_for_user = start + (20 if success else 10), False
     while time.time() < end:
         try:
             if success and evaluate(cdp, js_visible(success), sid):
                 log(session.id, 'auto-login done')
                 return 'ok'
+            if (success and password_selector and not waiting_for_user and time.time() > start + 10
+                    and evaluate(cdp, js_visible(password_selector), sid)):
+                break  # still on the login form: no need to wait any longer
             if interactive and not waiting_for_user and evaluate(cdp, js_visible(interactive), sid):
                 waiting_for_user, end = True, time.time() + 180
+                hide_overlay(session, cdp, sid)  # the user completes this step
                 log(session.id, 'auto-login: waiting for the user to finish the verification')
             if not success and not waiting_for_user and not evaluate(cdp, js_visible(password_selector), sid):
                 log(session.id, 'auto-login done')
@@ -382,7 +432,7 @@ class Session:
              '-forever', '-shared', '-noxdamage', '-quiet', '-nopw', '-xkb'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env))
         args = [
-            'chromium', '--kiosk', self.config['url'],
+            'chromium', '--kiosk', 'about:blank',  # the guard opens the site once it is watching
             f'--user-data-dir={self.dir}/profile', f'--remote-debugging-port={self.cdp_port}',
             '--remote-debugging-address=127.0.0.1', f'--window-size={w},{h}', '--window-position=0,0',
             '--no-first-run', '--no-default-browser-check', '--disable-translate', '--disable-sync',
@@ -424,14 +474,23 @@ class Session:
             for info in cdp.call('Target.getTargets').get('targetInfos', []):
                 self.attach(cdp, info)
             # pages may already be attached through the "target created" events
+            end = time.time() + 10
+            while not self.attached and time.time() < end:
+                cdp.pump(0.2)
             first = next(iter(self.attached.values()), None)
             result = 'skipped'
             if first:
-                try:
-                    result = autofill(self, cdp, first)
-                except Exception as e:
-                    log(self.id, 'auto-login failed:', e.__class__.__name__)
+                signs_in = (self.config.get('autofill') or 'basic') != 'no' and bool(self.config.get('password'))
+                if signs_in:
+                    show_overlay(self, cdp, first)
+                cdp.call('Page.navigate', {'url': self.config['url']}, session_id=first)
+                if signs_in:
+                    try:
+                        result = autofill(self, cdp, first)
+                    except Exception as e:
+                        log(self.id, 'auto-login failed:', e.__class__.__name__)
             self.config['password'] = ''  # not needed any more
+            hide_overlay(self, cdp, first, keep_screen=result == 'failed')
             if result == 'failed':
                 # nobody gets to use the login page with other credentials: tell the user and close
                 try:
