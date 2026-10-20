@@ -7,7 +7,11 @@ tabs, no developer tools), shown through VNC by Lion (the remote desktop service
 same in the web workspace and in the desktop client and is recorded like any remote session.
 
 - Auto-login: the asset's selectors (or script) are filled in through the Chrome DevTools Protocol
-  inside this container; the password never reaches the user's computer.
+  inside this container; the password never reaches the user's computer. The site is covered by a
+  "Signing in" screen meanwhile. Handled: one- and two-step login forms (also in same-origin frames
+  and shadow DOM), HTTP authentication, MFA/captcha steps (handed to the user), wrong password,
+  locked account, password change required, unreachable site, and being signed out later (signed
+  in again). When the sign-in fails the user is told why and the session ends.
 - Navigation: top-level pages may only be on the asset's own site and its "Allowed sites"; other
   pages are blocked (the page itself may still load images, scripts and APIs it needs).
 - Profiles live in a temporary folder that is deleted when the session ends.
@@ -170,45 +174,149 @@ class CDP:
             pass
 
 
-# ---------------------------------------------------------------- selectors and auto-login
+# ---------------------------------------------------------------- page helpers and auto-login
 
-def js_find(selector):
-    """JavaScript expression returning the element for a JumpServer-style selector (name=, id=, css=, xpath=...)."""
-    kind, _, value = (selector or '').partition('=')
-    kind, value = kind.strip().lower(), value.strip()
-    v = json.dumps(value)
-    if kind == 'id':
-        return f'document.getElementById({v})'
-    if kind == 'name':
-        return f'document.getElementsByName({v})[0]'
-    if kind == 'class_name':
-        return f'document.getElementsByClassName({v})[0]'
-    if kind == 'type':
-        return f'document.querySelector("input[type=" + JSON.stringify({v}) + "]")'
-    if kind == 'xpath':
-        return f'document.evaluate({v}, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue'
-    return f'document.querySelector({v})'  # css / css_selector / plain
-
-
-def js_type(selector, value):
-    return f'''(() => {{ const el = {js_find(selector)}; if (!el) return false; el.focus();
-        const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-        Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, {json.dumps(value)});
-        el.dispatchEvent(new Event('input', {{bubbles: true}})); el.dispatchEvent(new Event('change', {{bubbles: true}}));
-        return true; }})()'''
-
-
-def js_click(selector):
-    return f'(() => {{ const el = {js_find(selector)}; if (!el) return false; el.click(); return true; }})()'
-
-
-def js_visible(selector):
-    return (f'(() => {{ const el = {js_find(selector)}; '
-            f'return !!(el && (el.offsetParent !== null || el.getClientRects().length)); }})()')
-
-
-def js_exists(selector):
-    return f'!!({js_find(selector)})'
+# Runs inside the page. Finds fields in the page, its same-origin frames and open shadow roots, and
+# reports what kind of page is shown (login form, verification step, error, success...).
+XP_JS = r"""const XP = (() => {
+  const KINDS = ['id', 'name', 'class_name', 'type', 'xpath', 'css', 'css_selector', 'tag_name', 'link_text'];
+  const docs = () => {
+    const out = [];
+    const walk = d => {
+      out.push(d);
+      for (const f of d.querySelectorAll('iframe,frame')) {
+        try { if (f.contentDocument) walk(f.contentDocument); } catch (e) { /* another origin */ }
+      }
+    };
+    walk(document);
+    return out;
+  };
+  const deep = (root, css, out) => {
+    try { out.push(...root.querySelectorAll(css)); } catch (e) { return out; }
+    for (const h of root.querySelectorAll('*')) if (h.shadowRoot) deep(h.shadowRoot, css, out);
+    return out;
+  };
+  const all = css => { const out = []; for (const d of docs()) deep(d, css, out); return out; };
+  const vis = el => {
+    if (!el || !el.isConnected || el.disabled || !el.getClientRects().length) return false;
+    const s = el.ownerDocument.defaultView.getComputedStyle(el);
+    return s.visibility !== 'hidden' && s.display !== 'none' && parseFloat(s.opacity || '1') > 0.05;
+  };
+  const q = s => JSON.stringify(s);
+  const find = sel => {
+    sel = (sel || '').trim();
+    if (!sel) return [];
+    const i = sel.indexOf('=');
+    const kind = i > 0 ? sel.slice(0, i).trim().toLowerCase() : '';
+    const known = KINDS.includes(kind);
+    const v = known ? sel.slice(i + 1).trim() : sel;
+    switch (known ? kind : 'css') {
+      case 'id': return all('[id=' + q(v) + ']');
+      case 'name': return all('[name=' + q(v) + ']');
+      case 'class_name': return all('.' + CSS.escape(v));
+      case 'type': return all('input[type=' + q(v) + ']');
+      case 'link_text': return all('a,button').filter(e => (e.innerText || '').trim() === v);
+      case 'xpath': return docs().map(d => {
+        try { return d.evaluate(v, d, null, 9, null).singleNodeValue; } catch (e) { return null; }
+      }).filter(Boolean);
+      default: return all(v);
+    }
+  };
+  const pick = sel => find(sel).find(vis) || null;
+  const any = sel => pick(sel) || find(sel)[0] || null;
+  const passwords = () => all('input[type=password]').filter(vis);
+  const pwField = cfg => (cfg.password_selector && pick(cfg.password_selector)) || passwords()[0] || null;
+  const USERISH = /^(user(_?name)?|login(_?name)?|e-?mail|identifier|loginfmt|j_username|account(_?name)?|uid|user_?id|user_login|session\[login\]|log)$/i;
+  const texty = e => e.tagName === 'INPUT' && /^(text|email|tel|)$/i.test(e.type) && vis(e);
+  const userField = (cfg, pw) => {
+    if (cfg.username_selector) { const e = pick(cfg.username_selector); if (e) return e; }
+    if (pw) {
+      const scope = pw.form ? [...pw.form.elements] : all('input');
+      const before = scope.filter(e => texty(e) && (e.compareDocumentPosition(pw) & 4));
+      return before.length ? before[before.length - 1] : null;
+    }
+    return all('input').find(e => texty(e) && (e.type === 'email' || /username|email/i.test(e.autocomplete || '') ||
+      USERISH.test(e.name || '') || USERISH.test(e.id || ''))) || null;
+  };
+  const setValue = (el, value) => {
+    const w = el.ownerDocument.defaultView;
+    el.focus();
+    const proto = el.tagName === 'TEXTAREA' ? w.HTMLTextAreaElement.prototype : w.HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
+    for (const t of ['input', 'change']) el.dispatchEvent(new w.Event(t, {bubbles: true}));
+    return true;
+  };
+  const WORDS = /^(log ?in|sign ?in|log ?on|sign ?on|submit|continue|next|enter|ok|connect|anmelden|connexion|se connecter|entrar|acceder|iniciar|accedi|войти|登录|ログイン)/i;
+  const NOT_SUBMIT = /with |google|microsoft|apple|facebook|github|sso|forgot|reset|register|sign ?up|create/i;
+  const press = (cfg, field) => {
+    if (cfg.submit_selector) { const b = pick(cfg.submit_selector); if (b) { b.click(); return 'selector'; } }
+    const form = field && field.form;
+    if (form) form.noValidate = true;  // the website checks the stored account, not the browser
+    let b = null;
+    if (form) {
+      b = [...form.querySelectorAll('button[type=submit],input[type=submit],input[type=image]')].find(vis) ||
+          [...form.querySelectorAll('button:not([type])')].find(e => vis(e) && WORDS.test((e.innerText || '').trim()));
+    }
+    if (!b) {
+      b = all('button,input[type=submit],input[type=button],[role=button],a').filter(vis).find(e => {
+        const t = (e.innerText || e.value || '').trim();
+        return WORDS.test(t) && !NOT_SUBMIT.test(t);
+      });
+    }
+    if (b) { b.click(); return 'button'; }
+    if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); return 'form'; }
+    if (field) {
+      const w = field.ownerDocument.defaultView;
+      for (const t of ['keydown', 'keypress', 'keyup']) {
+        field.dispatchEvent(new w.KeyboardEvent(t, {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true}));
+      }
+      return 'enter';
+    }
+    return '';
+  };
+  const challenge = cfg => {
+    if (cfg.interactive_selector && pick(cfg.interactive_selector)) return 'configured';
+    if (all('iframe[src*="recaptcha"],iframe[src*="hcaptcha"],iframe[src*="turnstile"],iframe[src*="captcha" i],' +
+            'iframe[title*="captcha" i],input[name*="captcha" i],input[id*="captcha" i],img[src*="captcha" i],' +
+            'img[id*="captcha" i],img[alt*="captcha" i]').some(vis)) return 'captcha';
+    if (all('input[autocomplete="one-time-code"],input[name*="otp" i],input[id*="otp" i],input[name*="totp" i],' +
+            'input[name*="mfa" i],input[name*="2fa" i],input[name*="passcode" i],input[name="code"],input[id="code"],' +
+            'input[name*="verification" i]').some(vis)) return 'code';
+    return '';
+  };
+  const text = () => docs().map(d => { try { return d.body ? d.body.innerText : ''; } catch (e) { return ''; } })
+    .join('\n').slice(0, 30000);
+  const LOCKED = /\b(account|user)\b[^.\n]{0,40}\b(locked|disabled|suspended|blocked|deactivated|expired)\b|too many (failed |unsuccessful |invalid )?(login |sign-?in |log-?in )?attempts|temporarily (locked|blocked)/i;
+  const ERROR = /\b(invalid|incorrect|wrong|failed|failure|denied|unauthori[sz]ed|not recognized|does ?n[o']t match|try again|unknown user|bad credentials)\b/i;
+  return {
+    state(cfg) {
+      const pw = pwField(cfg);
+      const t = text();
+      return {
+        ready: document.readyState, path: location.pathname, pw: !!pw, pwCount: passwords().length,
+        user: !!userField(cfg, pw), success: !!(cfg.success_selector && pick(cfg.success_selector)),
+        challenge: challenge(cfg), locked: LOCKED.test(t), error: ERROR.test(t)
+      };
+    },
+    fill(cfg, username, password) {
+      const pw = pwField(cfg);
+      if (!pw) return false;
+      const u = userField(cfg, pw);
+      if (u && username) setValue(u, username);
+      return setValue(pw, password);
+    },
+    submit: cfg => press(cfg, pwField(cfg)),
+    fillUser(cfg, username) {
+      const u = userField(cfg, null);
+      if (!u) return '';
+      setValue(u, username);
+      return press(cfg, u);
+    },
+    exists: sel => !!any(sel),
+    type: (sel, value) => { const e = any(sel); return e ? setValue(e, value) : false; },
+    click: sel => { const e = any(sel); if (!e) return false; e.click(); return true; },
+  };
+})()"""
 
 
 def evaluate(cdp, expression, sid):
@@ -216,61 +324,16 @@ def evaluate(cdp, expression, sid):
     return (res.get('result') or {}).get('value')
 
 
-def wait_for(cdp, selector, timeout, sid):
-    end = time.time() + timeout
-    while time.time() < end:
-        try:
-            if evaluate(cdp, js_exists(selector), sid):
-                return True
-        except (TimeoutError, RuntimeError):
-            pass
-        cdp.pump(0.5)
-    return False
+def run(cdp, expression, sid):
+    """Evaluates an XP.* expression in the page."""
+    return evaluate(cdp, f'(() => {{ {XP_JS}; return {expression}; }})()', sid)
 
 
-def autofill(session, cdp, sid):
-    cfg = session.config
-    username, password = cfg.get('username') or '', cfg.get('password') or ''
-    mode = cfg.get('autofill') or 'basic'
-    if mode == 'no' or not password:
-        return 'skipped'
-    if mode == 'script' and cfg.get('script'):
-        steps = sorted([s for s in cfg['script'] if isinstance(s, dict)], key=lambda s: s.get('step', 0))
-        for step in steps[:128]:
-            cmd, target = step.get('command'), step.get('target') or ''
-            value = str(step.get('value') or '').replace('{USERNAME}', username).replace('{SECRET}', password)
-            timeout = min(int(step.get('timeout') or 15), 60)
-            if cmd == 'sleep':
-                cdp.pump(min(int(target or 0), 30))
-            elif cmd == 'type':
-                if wait_for(cdp, target, timeout, sid):
-                    evaluate(cdp, js_type(target, value), sid)
-            elif cmd in ('click', 'button', 'check'):
-                if wait_for(cdp, target, timeout, sid):
-                    evaluate(cdp, js_click(target), sid)
-            elif cmd == 'open':
-                cdp.call('Page.navigate', {'url': value or target}, session_id=sid)
-                cdp.pump(2)
-        secret_steps = [st.get('target') for st in steps if st.get('command') == 'type'
-                        and '{SECRET}' in str(st.get('value') or '')]
-        return verify_login(session, cdp, sid, secret_steps[-1] if secret_steps else '')
-    us, ps = cfg.get('username_selector') or '', cfg.get('password_selector') or ''
-    sub = cfg.get('submit_selector') or ''
-    if not ps:
-        ps = 'css=input[type=password]'
-    if not wait_for(cdp, ps, 30, sid):
-        log(session.id, 'auto-login: password field not found')
-        return 'skipped'
-    if username and us and wait_for(cdp, us, 5, sid):
-        evaluate(cdp, js_type(us, username), sid)
-    evaluate(cdp, js_type(ps, password), sid)
-    cdp.pump(0.3)
-    if sub and evaluate(cdp, js_click(sub), sid):
-        pass
-    else:  # no submit selector: submit the form of the password field
-        evaluate(cdp, f'(() => {{ const el = {js_find(ps)}; if (el && el.form) {{ el.form.requestSubmit ? '
-                      f'el.form.requestSubmit() : el.form.submit(); }} }})()', sid)
-    return verify_login(session, cdp, sid, ps)
+def page_state(session, cdp, sid):
+    try:
+        return run(cdp, f'XP.state({session.selectors})', sid) or {}
+    except (TimeoutError, RuntimeError):
+        return {}  # the page is changing
 
 
 # Covers the site while XPAM signs in: the user never sees (or types into) the login form. Real key
@@ -284,7 +347,7 @@ SIGNIN_OVERLAY_JS = r"""(() => {
     d.id = '__xpam_signin';
     d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#1e1e1e;color:#ddd;display:flex;' +
       'align-items:center;justify-content:center;font:18px sans-serif;cursor:progress';
-    d.textContent = 'Signing in\u2026';
+    d.textContent = 'Signing in…';
     document.documentElement.appendChild(d);
   };
   new MutationObserver(add).observe(document, {childList: true, subtree: true});
@@ -299,15 +362,16 @@ SIGNIN_OVERLAY_JS = r"""(() => {
 
 def show_overlay(session, cdp, sid):
     try:
-        cdp.call('Page.enable', {}, session_id=sid)
         res = cdp.call('Page.addScriptToEvaluateOnNewDocument', {'source': SIGNIN_OVERLAY_JS}, session_id=sid)
         session.overlay = res.get('identifier')
+        # the page shown now (signing in again after the site signed the user out)
+        evaluate(cdp, 'window.__xpamDone = false; window.__xpamOverlay = false; ' + SIGNIN_OVERLAY_JS, sid)
     except Exception as e:
         log(session.id, 'sign-in screen not available:', e.__class__.__name__)
 
 
 def hide_overlay(session, cdp, sid, keep_screen=False):
-    if not getattr(session, 'overlay', None):
+    if not session.overlay:
         return
     try:
         cdp.call('Page.removeScriptToEvaluateOnNewDocument', {'identifier': session.overlay}, session_id=sid)
@@ -318,49 +382,39 @@ def hide_overlay(session, cdp, sid, keep_screen=False):
     session.overlay = None
 
 
-def verify_login(session, cdp, sid, password_selector):
-    """
-    'ok' when the sign-in worked: the success selector appeared, or (without one) the login form is
-    gone. An interactive area (MFA, captcha) gives the user up to three minutes to finish it.
-    """
-    cfg = session.config
-    success = cfg.get('success_selector') or ''
-    interactive = cfg.get('interactive_selector') or ''
-    if not success and not password_selector:
-        log(session.id, 'auto-login done (not verified: no success selector)')
-        return 'ok'
-    cdp.pump(2)  # the form is sent and the next page loads
-    start = time.time()
-    end, waiting_for_user = start + (20 if success else 10), False
-    while time.time() < end:
-        try:
-            if success and evaluate(cdp, js_visible(success), sid):
-                log(session.id, 'auto-login done')
-                return 'ok'
-            if (success and password_selector and not waiting_for_user and time.time() > start + 10
-                    and evaluate(cdp, js_visible(password_selector), sid)):
-                break  # still on the login form: no need to wait any longer
-            if interactive and not waiting_for_user and evaluate(cdp, js_visible(interactive), sid):
-                waiting_for_user, end = True, time.time() + 180
-                hide_overlay(session, cdp, sid)  # the user completes this step
-                log(session.id, 'auto-login: waiting for the user to finish the verification')
-            if not success and not waiting_for_user and not evaluate(cdp, js_visible(password_selector), sid):
-                log(session.id, 'auto-login done')
-                return 'ok'
-        except (TimeoutError, RuntimeError):
-            pass  # the page is changing
-        cdp.pump(1)
-    log(session.id, 'auto-login FAILED: the site did not accept the account')
-    return 'failed'
+def message_html(title, lines):
+    body = ''.join(f'<p>{line}</p>' for line in lines)
+    return ('<html><head><title>' + title + '</title></head><body style="font-family:sans-serif;background:#1e1e1e;'
+            'color:#ddd;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
+            '<div style="text-align:center;max-width:560px"><h2>' + title + '</h2>' + body + '</div></body></html>')
 
 
-LOGIN_FAILED_PAGE = 'data:text/html;base64,' + base64.b64encode(
-    b'<html><head><title>Sign-in failed</title></head><body style="font-family:sans-serif;background:#1e1e1e;'
-    b'color:#ddd;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
-    b'<div style="text-align:center;max-width:560px"><h2>Automatic sign-in failed</h2>'
-    b'<p>The website did not accept the account stored in XPAM (the password may have changed).</p>'
-    b'<p>Ask your administrator to update the account. This session closes in a few seconds.</p>'
-    b'</div></body></html>').decode()
+CLOSING = 'This session closes in a few seconds.'
+FAILURES = {
+    'rejected': ('Automatic sign-in failed', 'The website did not accept the account stored in XPAM '
+                 '(the password may have changed).', 'Ask your administrator to update the account.'),
+    'locked': ('Account locked', 'The website says this account is locked or disabled.',
+               'Ask your administrator to unlock it.'),
+    'password_change': ('New password required', 'The website asks for a new password for this account.',
+                        'Ask your administrator to change the password in XPAM.'),
+    'unreachable': ('Website not reachable', 'The website did not respond.',
+                    'Try again later, or ask your administrator to check the asset.'),
+    'timeout_user': ('Verification not completed', 'The verification step (code or captcha) was not completed '
+                     'in time.', 'Open the asset again to retry.'),
+    'signed_out': ('Signed out', 'The website keeps signing this account out.',
+                   'Open the asset again, or ask your administrator.'),
+}
+
+
+def failure_url(reason):
+    title, *lines = FAILURES.get(reason) or FAILURES['rejected']
+    return 'data:text/html;base64,' + base64.b64encode(message_html(title, lines + [CLOSING]).encode()).decode()
+
+
+# shown instead of Chromium's error page, which would show the site address
+NET_ERROR_HTML = message_html('Page not available', [
+    'The website did not respond.',
+    '<button onclick="location.reload()" style="font-size:15px;padding:6px 18px;cursor:pointer">Try again</button>'])
 
 
 # ---------------------------------------------------------------- sessions
@@ -398,10 +452,23 @@ class Session:
         self.cdp_port = 9300 + display
         self.password = secrets.token_urlsafe(12)[:8]  # VNC passwords are 8 characters
         self.config = config
+        self.selectors = json.dumps({k: config.get(k) or '' for k in (
+            'username_selector', 'password_selector', 'submit_selector', 'success_selector', 'interactive_selector')})
         self.dir = os.path.join(ROOT, sid)
         self.procs = []
         self.created = time.time()
         self.closed = threading.Event()
+        self.attached = {}
+        self.main_sid = self.main_target = None
+        self.overlay = None
+        self.signing_in = False
+        self.unreachable = False
+        self.auth_given, self.auth_failed = set(), False
+        self.doc_status, self.doc_time = None, 0.0
+        self.login_path = None
+        self.two_step = False
+        self.relogins = []
+        self.check_login_at, self.check_again = None, False
         url = config['url']
         host = (urllib.parse.urlparse(url).hostname or '').lower()
         self.allowed = {host}
@@ -455,8 +522,11 @@ class Session:
                 time.sleep(0.2)
         return None
 
+    def can_sign_in(self):
+        return (self.config.get('autofill') or 'basic') != 'no' and bool(self.config.get('password'))
+
     def guard(self):
-        """One DevTools connection: auto-login on the first page and keep every page on the allowed sites."""
+        """One DevTools connection: sign-in on the first page and keep every page on the allowed sites."""
         ws = self.browser_ws()
         if not ws:
             log(self.id, 'browser did not start')
@@ -466,7 +536,6 @@ class Session:
         except Exception as e:
             log(self.id, 'cannot reach the browser:', e)
             return
-        self.attached = {}
         cdp.on_event = lambda msg: self.on_event(cdp, msg)
         deadline = self.created + MAX_HOURS * 3600
         try:
@@ -477,41 +546,257 @@ class Session:
             end = time.time() + 10
             while not self.attached and time.time() < end:
                 cdp.pump(0.2)
-            first = next(iter(self.attached.values()), None)
-            result = 'skipped'
-            if first:
-                signs_in = (self.config.get('autofill') or 'basic') != 'no' and bool(self.config.get('password'))
-                if signs_in:
-                    show_overlay(self, cdp, first)
-                cdp.call('Page.navigate', {'url': self.config['url']}, session_id=first)
-                if signs_in:
-                    try:
-                        result = autofill(self, cdp, first)
-                    except Exception as e:
-                        log(self.id, 'auto-login failed:', e.__class__.__name__)
-            self.config['password'] = ''  # not needed any more
-            hide_overlay(self, cdp, first, keep_screen=result == 'failed')
-            if result == 'failed':
-                # nobody gets to use the login page with other credentials: tell the user and close
-                try:
-                    cdp.call('Page.navigate', {'url': LOGIN_FAILED_PAGE}, session_id=first)
-                except Exception:
-                    pass
-                cdp.pump(8)
-                threading.Thread(target=release, args=(self.id,), daemon=True).start()
+            if not self.attached:
+                log(self.id, 'no browser page')
                 return
+            self.main_target, self.main_sid = next(iter(self.attached.items()))
+            sid = self.main_sid
+            signs_in = self.can_sign_in()
+            if signs_in:
+                show_overlay(self, cdp, sid)
+            if not self.open_site(cdp, sid):
+                log(self.id, 'website not reachable: closing')
+                return self.finish(cdp, sid, 'unreachable')
+            if signs_in:
+                result, reason = self.sign_in(cdp, sid)
+                if result == 'failed':
+                    return self.finish(cdp, sid, reason)
             while not self.closed.is_set():
                 if time.time() > deadline:
                     log(self.id, 'maximum session time reached')
                     threading.Thread(target=release, args=(self.id,), daemon=True).start()
                     return
-                cdp.pump(1)
+                if self.check_login_at and time.time() >= self.check_login_at:
+                    self.check_login_at = None
+                    result, reason = self.check_signed_out(cdp, sid)
+                    if result is None and self.check_again:
+                        self.check_login_at, self.check_again = time.time() + 2, False
+                    if result == 'failed':
+                        return self.finish(cdp, sid, reason)
+                cdp.pump(0.25)
         except ConnectionError:
             pass
         except Exception as e:
             log(self.id, 'browser guard stopped:', e.__class__.__name__, e)
         finally:
             cdp.close()
+
+    def open_site(self, cdp, sid):
+        """Opens the asset's address; False when the site cannot be reached (three tries)."""
+        for attempt in range(3):
+            self.unreachable = False
+            try:
+                res = cdp.call('Page.navigate', {'url': self.config['url']}, timeout=40, session_id=sid)
+            except TimeoutError:
+                return True  # still loading: the sign-in waits for the page
+            error = res.get('errorText') or ''
+            if not error or error == 'net::ERR_ABORTED':
+                return True
+            log(self.id, 'website not reachable:', error)
+            if attempt < 2:
+                cdp.pump(3)
+        return False
+
+    def finish(self, cdp, sid, reason):
+        """Tells the user why and ends the session: the login page is never left to the user."""
+        hide_overlay(self, cdp, sid, keep_screen=True)
+        try:
+            cdp.call('Page.navigate', {'url': failure_url(reason)}, session_id=sid)
+        except Exception:
+            pass
+        cdp.pump(8)
+        threading.Thread(target=release, args=(self.id,), daemon=True).start()
+
+    # ------------------------------------------------------------ sign-in
+
+    def sign_in(self, cdp, sid):
+        """Returns ('ok' | 'skipped' | 'failed', reason). The caller covers the page first (show_overlay)."""
+        self.signing_in = True
+        try:
+            cdp.call('Network.enable', {}, session_id=sid)  # status of the page after the form is sent
+        except Exception:
+            pass
+        try:
+            if (self.config.get('autofill') or 'basic') == 'script' and self.config.get('script'):
+                result = self._script(cdp, sid)
+            else:
+                result = self._basic(cdp, sid)
+        except ConnectionError:
+            raise
+        except Exception as e:
+            log(self.id, 'auto-login error:', e.__class__.__name__, e)
+            result = ('skipped', '')
+        finally:
+            self.signing_in = False
+            try:
+                cdp.call('Network.disable', {}, session_id=sid)
+            except Exception:
+                pass
+        hide_overlay(self, cdp, sid, keep_screen=result[0] == 'failed')
+        if result[0] == 'ok':
+            log(self.id, 'auto-login done' + (' (HTTP authentication)' if result[1] == 'http' else ''))
+        elif result[0] == 'skipped':
+            log(self.id, 'auto-login: no sign-in page found, showing the site')
+        else:
+            log(self.id, f'auto-login FAILED ({result[1]})')
+        return result
+
+    def _http_signed_in(self):
+        return bool(self.auth_given) and not self.auth_failed
+
+    def _basic(self, cdp, sid):
+        cfg, sel = self.config, self.selectors
+        end, ready_since, user_step_done = time.time() + 45, None, False
+        self.two_step = False
+        while time.time() < end:
+            if self.unreachable:
+                return 'failed', 'unreachable'
+            if self.auth_failed:
+                return 'failed', 'rejected'
+            st = page_state(self, cdp, sid)
+            if st.get('pw'):
+                self.login_path = st.get('path')
+                run(cdp, f'XP.fill({sel}, {json.dumps(cfg["username"])}, {json.dumps(cfg["password"])})', sid)
+                if st.get('challenge') in ('captcha', 'configured'):
+                    # a captcha on the login form: the account is filled in, the user solves it and signs in
+                    hide_overlay(self, cdp, sid)
+                    log(self.id, 'auto-login: waiting for the user to solve the captcha')
+                    return self._verify(cdp, sid, st, user_step=True)
+                cdp.pump(0.2)
+                self.doc_status = None
+                run(cdp, f'XP.submit({sel})', sid)
+                return self._verify(cdp, sid, st)
+            if st.get('user') and cfg.get('username') and not user_step_done and st.get('ready') == 'complete':
+                # two-step sign-in: the user name first, the password on the next page
+                user_step_done, ready_since, self.two_step = True, None, True
+                run(cdp, f'XP.fillUser({sel}, {json.dumps(cfg["username"])})', sid)
+                cdp.pump(1.5)
+                continue
+            if st.get('ready') == 'complete':
+                ready_since = ready_since or time.time()
+                waited = time.time() - ready_since
+                if (self._http_signed_in() and waited > 1.5) or waited > 6:
+                    break
+            else:
+                ready_since = None
+            cdp.pump(0.5)
+        return ('ok', 'http') if self._http_signed_in() else ('skipped', '')
+
+    def _wait_target(self, cdp, sid, target, timeout):
+        end = time.time() + timeout
+        while time.time() < end and not self.unreachable:
+            try:
+                if run(cdp, f'XP.exists({json.dumps(target)})', sid):
+                    return True
+            except (TimeoutError, RuntimeError):
+                pass
+            cdp.pump(0.5)
+        return False
+
+    def _script(self, cdp, sid):
+        cfg = self.config
+        steps = sorted([s for s in cfg['script'] if isinstance(s, dict)], key=lambda s: s.get('step', 0))
+        typed_secret, before = False, {}
+        for step in steps[:128]:
+            if self.unreachable:
+                return 'failed', 'unreachable'
+            if self.auth_failed:
+                return 'failed', 'rejected'
+            cmd, target, raw = step.get('command'), str(step.get('target') or ''), str(step.get('value') or '')
+            value = raw.replace('{USERNAME}', cfg['username']).replace('{SECRET}', cfg['password'])
+            timeout = min(int(step.get('timeout') or 15), 60)
+            if cmd == 'sleep':
+                cdp.pump(min(int(target or 0), 30))
+            elif cmd == 'open':
+                cdp.call('Page.navigate', {'url': value or target}, session_id=sid)
+                cdp.pump(2)
+            elif cmd in ('type', 'click', 'button', 'check'):
+                if not self._wait_target(cdp, sid, target, timeout):
+                    log(self.id, f'auto-login script: step {step.get("step")} not found on the page')
+                    continue
+                if cmd == 'type':
+                    if '{SECRET}' in raw:
+                        before = page_state(self, cdp, sid)
+                        self.login_path, typed_secret = before.get('path'), True
+                    run(cdp, f'XP.type({json.dumps(target)}, {json.dumps(value)})', sid)
+                else:
+                    self.doc_status = None
+                    run(cdp, f'XP.click({json.dumps(target)})', sid)
+        if not typed_secret:
+            return ('ok', 'http') if self._http_signed_in() else ('skipped', '')
+        return self._verify(cdp, sid, before)
+
+    def _verify(self, cdp, sid, before, user_step=False):
+        """
+        Decides whether the website accepted the account after the form was sent:
+        - ok: the success selector is shown, or the login form is gone (and no 401/403);
+        - a verification step (MFA code, captcha) is handed to the user for up to three minutes;
+        - failed: the login form is back (new page, 401/403 or an error message), the account is
+          locked, or the site asks for a new password.
+        """
+        success = bool(self.config.get('success_selector'))
+        cdp.pump(1)
+        start, waiting, gone, st = time.time(), user_step, None, {}
+        end = start + (180 if waiting else 20 if success else 10)
+        while time.time() < end:
+            if self.unreachable:
+                return 'failed', 'unreachable'
+            if self.auth_failed:
+                return 'failed', 'rejected'
+            st = page_state(self, cdp, sid)
+            if not st:
+                cdp.pump(0.5)
+                continue
+            if st.get('success'):
+                return 'ok', ''
+            if st.get('locked') and not before.get('locked'):
+                return 'failed', 'locked'
+            challenge = st.get('challenge')
+            if st.get('pwCount', 0) >= 2 and not challenge:
+                return 'failed', 'password_change'
+            if challenge and not waiting:
+                waiting, end = True, time.time() + 180
+                hide_overlay(self, cdp, sid)  # the user completes this step
+                log(self.id, 'auto-login: waiting for the user to finish the verification')
+            # two-step sign-in sent back to its first page: the login form is back as well
+            form_back = st.get('pw') or (self.two_step and st.get('user'))
+            if form_back:
+                gone = None
+                new_page = self.doc_status is not None and time.time() - self.doc_time > 1.5 and st.get('ready') == 'complete'
+                if not waiting and (self.doc_status in (401, 403) or new_page or
+                                    (st.get('error') and not before.get('error'))):
+                    return 'failed', 'rejected'
+            elif not challenge and st.get('ready') == 'complete':  # (not while the next page is loading)
+                if self.doc_status in (401, 403):
+                    return 'failed', 'rejected'
+                gone = gone or time.time()
+                if time.time() - gone >= (5 if success else 0.5):
+                    if success:
+                        log(self.id, 'auto-login: the success selector is not on the page, but the form is gone')
+                    return 'ok', ''
+            cdp.pump(0.5)
+        if st and not st.get('pw') and not st.get('challenge'):
+            return 'ok', ''
+        return 'failed', ('timeout_user' if waiting else 'rejected')
+
+    def check_signed_out(self, cdp, sid):
+        """After a page load: is the website's login form back? Then sign in again (at most 3 times in 10 minutes)."""
+        if not self.can_sign_in():
+            return None, ''
+        st = page_state(self, cdp, sid)
+        if not (st.get('pw') and st.get('pwCount') == 1 and not st.get('success')
+                and (st.get('user') or (self.login_path and st.get('path') == self.login_path))):
+            return None, ''
+        now = time.time()
+        self.relogins = [t for t in self.relogins if now - t < 600] + [now]
+        if len(self.relogins) > 3:
+            log(self.id, 'the website keeps signing the account out')
+            return 'failed', 'signed_out'
+        log(self.id, 'the website signed the account out: signing in again')
+        show_overlay(self, cdp, sid)
+        return self.sign_in(cdp, sid)
+
+    # ------------------------------------------------------------ pages and events
 
     def attach(self, cdp, info):
         url = str(info.get('url', ''))
@@ -529,18 +814,20 @@ class Session:
             return None
         sid = cdp.call('Target.attachToTarget', {'targetId': info['targetId'], 'flatten': True})['sessionId']
         self.attached[info['targetId']] = sid
-        cdp.call('Fetch.enable', {'patterns': [{'resourceType': 'Document', 'requestStage': 'Request'}]}, session_id=sid)
+        # handleAuthRequests: HTTP authentication (Basic, Digest, NTLM) is answered here, never by a browser prompt
+        cdp.call('Fetch.enable', {'patterns': [{'resourceType': 'Document', 'requestStage': 'Request'}],
+                                  'handleAuthRequests': True}, session_id=sid)
+        cdp.call('Page.enable', {}, session_id=sid)
         return sid
 
     def on_event(self, cdp, msg):
-        method, params = msg.get('method'), msg.get('params', {})
+        method, params, sid = msg.get('method'), msg.get('params', {}), msg.get('sessionId')
         if method in ('Target.targetCreated', 'Target.targetInfoChanged'):
             try:
                 self.attach(cdp, params.get('targetInfo', {}))
             except Exception:
                 pass
         elif method == 'Fetch.requestPaused':
-            sid = msg.get('sessionId')
             if host_allowed(self, params['request']['url']):
                 cdp.notify('Fetch.continueRequest', {'requestId': params['requestId']}, sid)
             else:
@@ -548,9 +835,43 @@ class Session:
                 cdp.notify('Fetch.fulfillRequest', {
                     'requestId': params['requestId'], 'responseCode': 403,
                     'responseHeaders': [{'name': 'Content-Type', 'value': 'text/html'}], 'body': BLOCKED_PAGE}, sid)
+        elif method == 'Fetch.authRequired':
+            ch = params.get('authChallenge') or {}
+            key = (ch.get('origin'), ch.get('scheme'), ch.get('realm'))
+            if ch.get('source') == 'Server' and self.can_sign_in() and key not in self.auth_given:
+                self.auth_given.add(key)
+                answer = {'response': 'ProvideCredentials', 'username': self.config['username'],
+                          'password': self.config['password']}
+            else:
+                if key in self.auth_given:  # asked again for the same site: the account was refused
+                    self.auth_failed = True
+                    log(self.id, 'the website refused the HTTP sign-in')
+                answer = {'response': 'CancelAuth'}
+            cdp.notify('Fetch.continueWithAuth', {'requestId': params['requestId'], 'authChallengeResponse': answer}, sid)
+        elif method == 'Page.frameNavigated':
+            frame = params.get('frame') or {}
+            if frame.get('parentId'):
+                return
+            url = frame.get('url', '')
+            if url.startswith('chrome-error://'):
+                if sid == self.main_sid:
+                    self.unreachable = True
+                # Chromium's error page names the site: show XPAM's own (Try again reloads the page)
+                cdp.notify('Runtime.evaluate', {'expression': 'document.documentElement.innerHTML = '
+                                                + json.dumps(NET_ERROR_HTML)}, sid)
+            elif sid == self.main_sid and url.startswith(('http://', 'https://')) and not self.signing_in:
+                self.check_login_at = time.time() + 2  # was the account signed out?
+        elif method == 'Page.domContentEventFired':
+            if sid == self.main_sid and not self.signing_in:
+                # check at once (the login form must not stay usable), again a bit later for pages built by scripts
+                self.check_login_at, self.check_again = time.time(), True
+        elif method == 'Network.responseReceived':
+            if sid == self.main_sid and params.get('type') == 'Document' and params.get('frameId') == self.main_target:
+                self.doc_status, self.doc_time = (params.get('response') or {}).get('status'), time.time()
 
     def stop(self):
         self.closed.set()
+        self.config['password'] = ''
         for p in reversed(self.procs):
             try:
                 p.terminate()
