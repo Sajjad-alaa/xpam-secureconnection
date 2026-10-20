@@ -195,7 +195,7 @@ func (s *Server) createCredentialSession(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	if !available {
-		s.writeCreatedWebSession(w, response, &apiSession, ticket.ID)
+		s.writeCreatedWebSession(w, response, &apiSession, ticket.ID, allowedTargets(origin, connectToken.Asset.SpecInfo.AllowedURLs))
 		return
 	}
 
@@ -245,11 +245,11 @@ func (s *Server) createCredentialSession(w http.ResponseWriter, r *http.Request)
 	response.SubmitSelector = submitSelector
 	response.ServerPublicKey = serverPublicKey
 	response.ExpiresAt = credentialExpiresAt
-	s.writeCreatedWebSession(w, response, &apiSession, ticket.ID)
+	s.writeCreatedWebSession(w, response, &apiSession, ticket.ID, allowedTargets(origin, connectToken.Asset.SpecInfo.AllowedURLs))
 }
 
-func (s *Server) writeCreatedWebSession(w http.ResponseWriter, response createCredentialSessionResponse, apiSession *model.Session, ticketID string) {
-	if err := s.registerProxySession(apiSession, ticketID); err != nil {
+func (s *Server) writeCreatedWebSession(w http.ResponseWriter, response createCredentialSessionResponse, apiSession *model.Session, ticketID string, allowed []string) {
+	if err := s.registerProxySession(apiSession, ticketID, allowed...); err != nil {
 		_, _ = s.coreService.SessionDisconnect(response.SessionID)
 		http.Error(w, "unable to create proxy authentication session", http.StatusServiceUnavailable)
 		return

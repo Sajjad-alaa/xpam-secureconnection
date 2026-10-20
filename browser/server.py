@@ -75,9 +75,11 @@ class CDP:
         if b' 101 ' not in resp.split(b'\r\n')[0]:
             raise ConnectionError('CDP handshake refused')
         self.buf = resp.split(b'\r\n\r\n', 1)[1]
+        # blocking reads only once select() says data is there: a timeout can never cut a frame in half
+        self.sock.settimeout(None)
         self.next_id = 0
-        self.events = []
         self.replies = {}
+        self.notified = set()  # ids of notify() calls: their answers are dropped
         self.wlock = threading.Lock()
 
     def _send(self, data):
@@ -129,10 +131,18 @@ class CDP:
         if session_id:
             msg['sessionId'] = session_id
         self._send(json.dumps(msg))
+        import select
         end = time.time() + timeout
-        while time.time() < end:
+        while True:
             # an answer may already have been read by a nested call (event handlers call too)
-            reply = self.replies.pop(mid, None) or self.recv()
+            reply = self.replies.pop(mid, None)
+            if reply is None:
+                remaining = end - time.time()
+                if remaining <= 0:
+                    raise TimeoutError(method)
+                if not self.buf and not select.select([self.sock], [], [], remaining)[0]:
+                    raise TimeoutError(method)
+                reply = self.recv()
             if reply.get('id') == mid:
                 if 'error' in reply:
                     raise RuntimeError(reply['error'].get('message', 'CDP error'))
@@ -140,8 +150,10 @@ class CDP:
             if 'method' in reply:
                 self.on_event(reply)
             elif reply.get('id'):
-                self.replies[reply['id']] = reply
-        raise TimeoutError(method)
+                if reply['id'] in self.notified:
+                    self.notified.discard(reply['id'])
+                else:
+                    self.replies[reply['id']] = reply
 
     def pump(self, seconds):
         """Handle events (paused navigations) for a while; frames are only read when data is waiting."""
@@ -158,14 +170,22 @@ class CDP:
             msg = self.recv()
             if 'method' in msg:
                 self.on_event(msg)
+            elif msg.get('id') in self.notified:
+                self.notified.discard(msg['id'])
+            elif msg.get('id'):
+                self.replies[msg['id']] = msg
 
     def notify(self, method, params, session_id):
         """Send without waiting for the answer."""
         self.next_id += 1
-        self._send(json.dumps({'id': self.next_id, 'method': method, 'params': params, 'sessionId': session_id}))
+        self.notified.add(self.next_id)
+        msg = {'id': self.next_id, 'method': method, 'params': params}
+        if session_id:
+            msg['sessionId'] = session_id
+        self._send(json.dumps(msg))
 
     def on_event(self, msg):
-        self.events.append(msg)
+        pass
 
     def close(self):
         try:
@@ -293,7 +313,7 @@ XP_JS = r"""const XP = (() => {
       const pw = pwField(cfg);
       const t = text();
       return {
-        ready: document.readyState, path: location.pathname, pw: !!pw, pwCount: passwords().length,
+        ready: document.readyState, path: location.pathname, host: location.hostname.toLowerCase(), pw: !!pw, pwCount: passwords().length,
         user: !!userField(cfg, pw), success: !!(cfg.success_selector && pick(cfg.success_selector)),
         challenge: challenge(cfg), locked: LOCKED.test(t), error: ERROR.test(t)
       };
@@ -311,6 +331,16 @@ XP_JS = r"""const XP = (() => {
       if (!u) return '';
       setValue(u, username);
       return press(cfg, u);
+    },
+    lockPassword(cfg) {
+      // the user solves a captcha next to the filled-in form: the password must stay hidden
+      const pw = pwField(cfg);
+      if (!pw || pw.__xpamLocked) return false;
+      pw.__xpamLocked = true;
+      const keep = () => { if (pw.type !== 'password') pw.type = 'password'; };
+      new pw.ownerDocument.defaultView.MutationObserver(keep).observe(pw, {attributes: true, attributeFilter: ['type']});
+      pw.addEventListener('copy', e => e.preventDefault(), true);
+      return true;
     },
     exists: sel => !!any(sel),
     type: (sel, value) => { const e = any(sel); return e ? setValue(e, value) : false; },
@@ -424,8 +454,6 @@ def host_allowed(session, url):
         u = urllib.parse.urlparse(url)
     except ValueError:
         return False
-    if u.scheme in ('about', 'data', 'blob'):
-        return True
     if u.scheme not in ('http', 'https'):
         return False
     host = (u.hostname or '').lower()
@@ -435,6 +463,17 @@ def host_allowed(session, url):
         if host == allowed:
             return True
     return False
+
+
+PUBLIC_SECOND_LEVEL = {'co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go', 'mil', 'nic'}
+
+
+def wildcard_ok(base):
+    """'*.example.com' is fine; '*.com' or '*.co.uk' would allow most of the internet."""
+    labels = [x for x in base.split('.') if x]
+    if len(labels) < 2:
+        return False
+    return not (len(labels) == 2 and labels[0] in PUBLIC_SECOND_LEVEL)
 
 
 BLOCKED_PAGE = base64.b64encode(
@@ -471,19 +510,32 @@ class Session:
         self.check_login_at, self.check_again = None, False
         url = config['url']
         host = (urllib.parse.urlparse(url).hostname or '').lower()
+        self.asset_host = host  # basic auto-login only fills forms on the asset's own site
+        self.guard_done = False
         self.allowed = {host}
         for item in config.get('allowed_urls') or []:
             item = str(item).strip().lower()
             if not item:
                 continue
             parsed = urllib.parse.urlparse(item if '://' in item else f'http://{item}')
-            if parsed.hostname:
-                self.allowed.add(('*.' if item.startswith('*.') else '') + parsed.hostname.lstrip('*.'))
+            if not parsed.hostname:
+                continue
+            base = parsed.hostname.lstrip('*.')
+            if item.startswith('*.') and not wildcard_ok(base):
+                log(sid, 'ignored allowed site', repr(item), '(too broad)')
+                continue
+            self.allowed.add(('*.' if item.startswith('*.') else '') + base)
 
     def start(self):
         os.makedirs(self.dir, exist_ok=True)
         w, h = self.config['width'], self.config['height']
+        os.chmod(self.dir, 0o700)
         env = dict(os.environ, DISPLAY=f':{self.display}', HOME=self.dir)
+        for stale in (f'/tmp/.X{self.display}-lock', f'/tmp/.X11-unix/X{self.display}'):
+            try:
+                os.unlink(stale)  # left behind by an Xvfb that had to be killed
+            except OSError:
+                pass
         self.procs.append(subprocess.Popen(
             ['Xvfb', f':{self.display}', '-screen', '0', f'{w}x{h}x24', '-nolisten', 'tcp', '-dpi', '96'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
@@ -504,7 +556,7 @@ class Session:
             '--remote-debugging-address=127.0.0.1', f'--window-size={w},{h}', '--window-position=0,0',
             '--no-first-run', '--no-default-browser-check', '--disable-translate', '--disable-sync',
             '--disable-features=Translate,PasswordManagerOnboarding,MediaRouter,OptimizationHints',
-            '--password-store=basic', '--disable-dev-shm-usage', '--no-sandbox', '--test-type',
+            '--password-store=basic', '--disk-cache-size=52428800', '--no-sandbox', '--test-type',
             '--disable-gpu', '--disable-background-networking', '--lang=en-US', '--noerrdialogs',
             '--disable-session-crashed-bubble', '--hide-crash-restore-bubble',
         ]
@@ -540,6 +592,9 @@ class Session:
         deadline = self.created + MAX_HOURS * 3600
         try:
             cdp.call('Target.setDiscoverTargets', {'discover': True})
+            # every new window, tab or developer-tools window starts PAUSED until XPAM has decided: developer
+            # tools are closed before they can render, and a new tab's first request cannot pass unguarded
+            cdp.call('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': True, 'flatten': True})
             for info in cdp.call('Target.getTargets').get('targetInfos', []):
                 self.attach(cdp, info)
             # pages may already be attached through the "target created" events
@@ -564,7 +619,6 @@ class Session:
             while not self.closed.is_set():
                 if time.time() > deadline:
                     log(self.id, 'maximum session time reached')
-                    threading.Thread(target=release, args=(self.id,), daemon=True).start()
                     return
                 if self.check_login_at and time.time() >= self.check_login_at:
                     self.check_login_at = None
@@ -580,6 +634,11 @@ class Session:
             log(self.id, 'browser guard stopped:', e.__class__.__name__, e)
         finally:
             cdp.close()
+            self.guard_done = True
+            if not self.closed.is_set():
+                # nothing watches the browser any more (navigation, developer tools): fail closed
+                log(self.id, 'browser guard ended: closing the session')
+                threading.Thread(target=release, args=(self.id,), daemon=True).start()
 
     def open_site(self, cdp, sid):
         """Opens the asset's address; False when the site cannot be reached (three tries)."""
@@ -602,10 +661,11 @@ class Session:
         hide_overlay(self, cdp, sid, keep_screen=True)
         try:
             cdp.call('Page.navigate', {'url': failure_url(reason)}, session_id=sid)
+            cdp.pump(0.5)
+            cdp.call('Page.resetNavigationHistory', {}, session_id=sid)  # Back cannot return to the login page
         except Exception:
             pass
         cdp.pump(8)
-        threading.Thread(target=release, args=(self.id,), daemon=True).start()
 
     # ------------------------------------------------------------ sign-in
 
@@ -654,11 +714,16 @@ class Session:
             if self.auth_failed:
                 return 'failed', 'rejected'
             st = page_state(self, cdp, sid)
+            if st.get('pw') and st.get('host') != self.asset_host:
+                # a login form on another site (allowed site, SSO...) never gets the asset's account
+                st = dict(st, pw=False, user=False)
             if st.get('pw'):
                 self.login_path = st.get('path')
                 run(cdp, f'XP.fill({sel}, {json.dumps(cfg["username"])}, {json.dumps(cfg["password"])})', sid)
                 if st.get('challenge') in ('captcha', 'configured'):
-                    # a captcha on the login form: the account is filled in, the user solves it and signs in
+                    # a captcha on the login form: the account is filled in, the user solves it and signs in;
+                    # the password field stays a password field ("show password" buttons are undone)
+                    run(cdp, f'XP.lockPassword({sel})', sid)
                     hide_overlay(self, cdp, sid)
                     log(self.id, 'auto-login: waiting for the user to solve the captcha')
                     return self._verify(cdp, sid, st, user_step=True)
@@ -666,7 +731,8 @@ class Session:
                 self.doc_status = None
                 run(cdp, f'XP.submit({sel})', sid)
                 return self._verify(cdp, sid, st)
-            if st.get('user') and cfg.get('username') and not user_step_done and st.get('ready') == 'complete':
+            if (st.get('user') and cfg.get('username') and not user_step_done and st.get('ready') == 'complete'
+                    and st.get('host') == self.asset_host):
                 # two-step sign-in: the user name first, the password on the next page
                 user_step_done, ready_since, self.two_step = True, None, True
                 run(cdp, f'XP.fillUser({sel}, {json.dumps(cfg["username"])})', sid)
@@ -785,7 +851,7 @@ class Session:
             return None, ''
         st = page_state(self, cdp, sid)
         if not (st.get('pw') and st.get('pwCount') == 1 and not st.get('success')
-                and (st.get('user') or (self.login_path and st.get('path') == self.login_path))):
+                and st.get('host') == self.asset_host and self.login_path and st.get('path') == self.login_path):
             return None, ''
         now = time.time()
         self.relogins = [t for t in self.relogins if now - t < 600] + [now]
@@ -797,6 +863,29 @@ class Session:
         return self.sign_in(cdp, sid)
 
     # ------------------------------------------------------------ pages and events
+
+    def attached_paused(self, cdp, sid, info, waiting):
+        """A target auto-attached while paused: close developer tools, guard pages, then let it run."""
+        url, tp = str(info.get('url', '')), info.get('type')
+        if url.startswith('devtools://') or tp == 'devtools':
+            try:
+                cdp.call('Target.closeTarget', {'targetId': info['targetId']})
+                log(self.id, 'closed developer tools')
+            except Exception:
+                pass
+            return
+        if tp == 'page' and info['targetId'] not in self.attached:
+            self.attached[info['targetId']] = sid
+            try:
+                cdp.call('Fetch.enable', {'patterns': [{'resourceType': 'Document', 'requestStage': 'Request'}],
+                                          'handleAuthRequests': True}, session_id=sid)
+                cdp.call('Page.enable', {}, session_id=sid)
+            except Exception as e:
+                log(self.id, 'could not guard a new page, closing it:', e.__class__.__name__)
+                cdp.notify('Target.closeTarget', {'targetId': info['targetId']}, None)
+                return
+        if waiting:
+            cdp.notify('Runtime.runIfWaitingForDebugger', {}, sid)
 
     def attach(self, cdp, info):
         url = str(info.get('url', ''))
@@ -822,9 +911,18 @@ class Session:
 
     def on_event(self, cdp, msg):
         method, params, sid = msg.get('method'), msg.get('params', {}), msg.get('sessionId')
-        if method in ('Target.targetCreated', 'Target.targetInfoChanged'):
+        if method == 'Target.attachedToTarget' and not sid:
             try:
-                self.attach(cdp, params.get('targetInfo', {}))
+                self.attached_paused(cdp, params['sessionId'], params.get('targetInfo', {}),
+                                     params.get('waitingForDebugger'))
+            except Exception as e:
+                log(self.id, 'attach failed:', e.__class__.__name__)
+        elif method in ('Target.targetCreated', 'Target.targetInfoChanged'):
+            info = params.get('targetInfo', {})
+            if info.get('targetId') in self.attached and not str(info.get('url', '')).startswith('devtools://'):
+                return
+            try:
+                self.attach(cdp, info)
             except Exception:
                 pass
         elif method == 'Fetch.requestPaused':
@@ -956,8 +1054,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def authorized(self):
-        auth = self.headers.get('Authorization', '')
-        return bool(KEY) and hmac.compare_digest(auth, f'Bearer {KEY}')
+        auth = self.headers.get('Authorization', '').encode('utf-8', 'surrogateescape')
+        return bool(KEY) and hmac.compare_digest(auth, f'Bearer {KEY}'.encode())
 
     def do_GET(self):
         if self.path == '/health':
@@ -987,6 +1085,19 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {'error': 'not found'})
 
 
+def reaper():
+    """Releases sessions whose browser died or whose time is up, even if Lion never asks."""
+    while True:
+        time.sleep(30)
+        now = time.time()
+        for sid, session in list(sessions.items()):
+            dead = any(p.poll() is not None for p in session.procs)
+            expired = now > session.created + MAX_HOURS * 3600 + 60
+            if dead or expired or (session.guard_done and not session.closed.is_set()):
+                log(sid, 'reaped:', 'process ended' if dead else 'time is up' if expired else 'unguarded')
+                release(sid)
+
+
 def shutdown(*_):
     for sid in list(sessions):
         release(sid)
@@ -1002,6 +1113,7 @@ if __name__ == '__main__':
     os.makedirs(ROOT, exist_ok=True)
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
+    threading.Thread(target=reaper, daemon=True).start()
     server = ThreadingHTTPServer(('0.0.0.0', int(os.environ.get('BROWSER_PORT', '9001'))), Handler)
     log('XPAM browser service listening on', server.server_address, 'advertising', ADVERTISE)
     server.serve_forever()

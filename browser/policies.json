@@ -26,5 +26,6 @@
     "devtools://*",
     "chrome-extension://*",
     "javascript:*"
-  ]
+  ],
+  "AllowFileSelectionDialogs": false
 }

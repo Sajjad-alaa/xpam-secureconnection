@@ -433,6 +433,12 @@ func (t *Connection) HandleTask(task *model.TerminalTask) error {
 		_ = t.SendWsMessage(ins.Instruction())
 		reason := model.SessionLifecycleLog{Reason: string(model.ReasonErrAdminTerminate)}
 		t.Service.RecordLifecycleLog(t.Sess.ID, model.AssetConnectFinished, reason)
+		// XPAM: end the session on the server too (a client that ignores the error would keep
+		// driving the desktop); the user gets the message first
+		go func() {
+			time.Sleep(time.Second)
+			t.Close()
+		}()
 	case model.TaskPermExpired:
 		t.PermBecomeExpired(task.Name, task.Args)
 	case model.TaskPermValid:

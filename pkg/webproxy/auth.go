@@ -20,8 +20,10 @@ import (
 const proxySessionIdleTimeout = 5 * time.Minute
 
 type proxySession struct {
-	id       string
-	ticket   string
+	id     string
+	ticket string
+	// XPAM: hosts this session may reach besides the public internet (the asset and its allowed sites)
+	allowed  []string
 	ctx      context.Context
 	cancel   context.CancelFunc
 	locked   bool
@@ -39,14 +41,15 @@ func validatedProxyTicket(r *http.Request, tokenID string) (*auth.ConnectTicket,
 	return ticket, ok && ticket.User != nil && ticket.User.ID != "" && ticket.TokenID != "" && ticket.TokenID == tokenID
 }
 
-func (s *Server) registerProxySession(apiSession *model.Session, ticketID string) error {
+func (s *Server) registerProxySession(apiSession *model.Session, ticketID string, allowed ...string) error {
 	s.auth.mu.Lock()
 	defer s.auth.mu.Unlock()
 	if len(s.auth.sessions) >= maxCredentialSessions {
 		return errors.New("too many Web proxy sessions")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	current := &proxySession{id: apiSession.ID, ticket: ticketID, ctx: ctx, cancel: cancel, lastSeen: time.Now()}
+	current := &proxySession{id: apiSession.ID, ticket: ticketID, ctx: ctx, cancel: cancel, lastSeen: time.Now(),
+		allowed: allowed}
 	s.auth.sessions[current.id] = current
 	var expire func()
 	expire = func() {
@@ -164,6 +167,6 @@ func (s *Server) stopProxySessions() {
 }
 
 func requireProxyAuth(w http.ResponseWriter) {
-	w.Header().Set("Proxy-Authenticate", `Basic realm="JumpServer Web Proxy"`)
+	w.Header().Set("Proxy-Authenticate", `Basic realm="XPAM Web Proxy"`)
 	http.Error(w, "proxy authentication required", http.StatusProxyAuthRequired)
 }

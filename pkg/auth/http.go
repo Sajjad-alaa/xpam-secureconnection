@@ -56,6 +56,13 @@ func HTTPMiddleSessionAuth(jmsService *service.JMService) gin.HandlerFunc {
 
 		ticketID := RequestConnectTicket(ctx.Request)
 		if ticketID != "" {
+			// XPAM: a ticket never mints new tickets (access must not outlive logout or a disabled user)
+			if strings.HasSuffix(ctx.Request.URL.Path, "/api/connect-ticket/") {
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"detail": "sign in to create a connect ticket",
+				})
+				return
+			}
 			ticket, ok := ConnectTickets.Get(ticketID)
 			if !ok || ticket.User == nil {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{

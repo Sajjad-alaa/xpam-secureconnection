@@ -155,7 +155,15 @@ func (s *Server) SftpHostConnectorView(ctx *gin.Context) {
 		return
 	}
 	var userV *UserVolume
+	requester, _ := ctx.Get(auth.ContextKeyUser)
+	requestUser, _ := requester.(*model.User)
 	if wsCon := s.broadCaster.GetUserWebsocket(params.Sid); wsCon != nil {
+		// XPAM: only the owner of the file manager websocket (the sid ends up in URLs and logs)
+		if owner := wsCon.CurrentUser(); requestUser == nil || owner == nil || owner.ID != requestUser.ID {
+			logger.Errorf("Elfinder ws %s refused for another user from ip %s", params.Sid, ctx.ClientIP())
+			ctx.String(http.StatusForbidden, "not your file manager session")
+			return
+		}
 		handler := wsCon.GetHandler()
 		switch handler.Name() {
 		case WebFolderName:

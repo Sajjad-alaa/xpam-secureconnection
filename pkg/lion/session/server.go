@@ -75,6 +75,13 @@ func ParseWidthAndHeight(ctx *gin.Context, connectToken *model.ConnectToken) (in
 			}
 		}
 	}
+	// XPAM: bounded (the values go to guacd and the browser service)
+	if width > 8192 {
+		width = 8192
+	}
+	if height > 8192 {
+		height = 8192
+	}
 	return width, height
 }
 
@@ -108,6 +115,11 @@ func (s *Server) CreatByToken(ctx *gin.Context, token string) (TunnelSession, er
 	opts = append(opts, WithTerminalConfig(&cfg))
 	// XPAM: web asset in the browser service (works in any browser, no address bar)
 	if connectToken.ConnectMethod.Value == connectWebBrowser {
+		// the token is used up BEFORE a signed-in browser starts: it can never start a second one
+		if _, err1 := s.JmsService.GetConnectTokenInfo(token, true); err1 != nil {
+			logger.Errorf("Expire connect token for the browser session failed: %s", err1.Error())
+			return TunnelSession{}, fmt.Errorf("%w: %s", ErrAPIService, err1.Error())
+		}
 		width, height := ParseWidthAndHeight(ctx, &connectToken)
 		container, client, err1 := s.startXPAMBrowser(&connectToken, width, height)
 		if err1 != nil {
@@ -115,9 +127,6 @@ func (s *Server) CreatByToken(ctx *gin.Context, token string) (TunnelSession, er
 			return TunnelSession{}, fmt.Errorf("%w: %s", ErrAPIService, err1.Error())
 		}
 		logger.Infof("Connect web asset %s in the browser service (%s)", connectToken.Asset.String(), container.ContainerId)
-		if _, err1 = s.JmsService.GetConnectTokenInfo(token, true); err1 != nil {
-			logger.Errorf("Try to expire connect token err: %s", err1.Error())
-		}
 		opts = append(opts, WithVirtualAppOption(container))
 		opts = append(opts, WithVirtualAppClient(client))
 		opts = append(opts, WithGateway(nil))

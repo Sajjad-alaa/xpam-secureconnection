@@ -60,7 +60,8 @@ func (m *MonitorCon) readTunnelInstruction() (*guacd.Instruction, error) {
 }
 
 func (m *MonitorCon) acceptsClientInstruction(opcode string) bool {
-	if !m.lockedStatus.Load() && (m.Meta == nil || m.Meta.Writable) {
+	// XPAM: a monitor (Meta == nil) only watches; only a writable share participant may send input
+	if !m.lockedStatus.Load() && m.Meta != nil && m.Meta.Writable {
 		return true
 	}
 	switch opcode {

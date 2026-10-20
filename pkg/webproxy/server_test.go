@@ -73,7 +73,7 @@ func TestProxyRequiresAuthenticationForHTTPAndCONNECT(t *testing.T) {
 	}
 }
 
-func TestAuthenticatedProxyForwardsHTTPAndHTTPSWithoutHostAllowlist(t *testing.T) {
+func TestAuthenticatedProxyForwardsHTTPAndHTTPSToTheAsset(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Proxy-Authorization") != "" {
 			t.Error("proxy credential reached upstream")
@@ -88,6 +88,8 @@ func TestAuthenticatedProxyForwardsHTTPAndHTTPSWithoutHostAllowlist(t *testing.T
 	secureUpstream := httptest.NewTLSServer(handler)
 	defer secureUpstream.Close()
 	proxy, session := authenticatedTestProxy(t)
+	// the test servers listen on loopback: they stand for the asset of this session
+	proxy.auth.sessions[session.SessionID].allowed = []string{"127.0.0.1"}
 	server := httptest.NewServer(proxy)
 	defer server.Close()
 	proxyURL, _ := url.Parse(server.URL)
@@ -125,6 +127,7 @@ func TestClosingProxySessionClosesExistingTunnel(t *testing.T) {
 		_, _ = io.Copy(conn, conn)
 	}()
 	proxy, session := authenticatedTestProxy(t)
+	proxy.auth.sessions[session.SessionID].allowed = []string{"127.0.0.1"}
 	server := httptest.NewServer(proxy)
 	defer server.Close()
 	address, _ := url.Parse(server.URL)
@@ -201,5 +204,33 @@ func TestProxySessionUsesSharedSessionTasksAndOutlivesBootstrapTicket(t *testing
 	}
 	if _, ok := session.GetSessionById(created.SessionID); ok {
 		t.Fatal("closed proxy remained in the session registry")
+	}
+}
+
+func TestProxyRefusesInternalTargetsOutsideTheAsset(t *testing.T) {
+	proxy, session := authenticatedTestProxy(t)
+	proxy.auth.sessions[session.SessionID].allowed = []string{"login.example.com"}
+	for _, target := range []string{"127.0.0.1:6379", "localhost:5432", "10.0.0.5:8080", "169.254.169.254:80"} {
+		request := httptest.NewRequest(http.MethodConnect, "http://"+target, nil)
+		request.Host = target
+		request.Header.Set("Proxy-Authorization", proxyHeader(proxy, session.SessionID))
+		response := httptest.NewRecorder()
+		proxy.ServeHTTP(response, request)
+		if response.Code != http.StatusForbidden {
+			t.Fatalf("%s: expected 403, got %d", target, response.Code)
+		}
+	}
+}
+
+func TestAllowedTargetsFromAssetAndAllowedSites(t *testing.T) {
+	hosts := allowedTargets("https://app.example.com:8443", []string{"*.cdn.example.net", "api.example.org/v1", " "})
+	session := &proxySession{allowed: hosts}
+	for host, want := range map[string]bool{
+		"app.example.com": true, "x.cdn.example.net": true, "cdn.example.net": true, "api.example.org": true,
+		"evil.example.com": false, "example.net": false,
+	} {
+		if got := session.hostListed(host); got != want {
+			t.Fatalf("%s: listed=%v, want %v", host, got, want)
+		}
 	}
 }

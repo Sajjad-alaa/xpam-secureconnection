@@ -558,6 +558,18 @@ func (h *tty) syncUserPreference(terminalID uint32, preference *UserKoKoPreferen
 }
 
 func (h *tty) createShareSession(terminalID uint32, shareData *ShareRequestParams) {
+	// XPAM: only the session of this terminal, and only with the share permission (a client-supplied
+	// session id would let a user share, and join with keyboard control, someone else's session)
+	client := h.getClient(terminalID)
+	var sessionInfo *proxy.SessionInfo
+	if client != nil {
+		sessionInfo = client.GetSessionInfo()
+	}
+	if sessionInfo == nil || sessionInfo.Session == nil || sessionInfo.Perms == nil || !sessionInfo.Perms.EnableShare() {
+		logger.Errorf("Ws[%s] share request refused: no shareable session on terminal %d", h.ws.Uuid, terminalID)
+		return
+	}
+	shareData.SessionID = sessionInfo.Session.ID
 	// 创建 共享连接
 	res, err := h.handleShareRequest(shareData)
 	if err != nil {

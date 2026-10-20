@@ -3,6 +3,7 @@ package tunnel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -498,6 +499,10 @@ func (g *GuacamoleTunnelServer) CreateShare(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, ErrorResponse(err))
 		return
 	}
+	if !g.ownsShareableSession(ctx, params.SessionId) {
+		ctx.JSON(http.StatusForbidden, ErrorResponse(errors.New("not the owner of a shareable session")))
+		return
+	}
 	shareReq := model.SharingSessionRequest{
 		SessionID:  params.SessionId,
 		ExpireTime: params.ExpiredTime,
@@ -602,6 +607,10 @@ func (g *GuacamoleTunnelServer) DeleteShare(ctx *gin.Context) {
 		User string               `json:"user"`
 		Meta MetaShareUserMessage `json:"meta"`
 	}
+	if !g.ownsShareableSession(ctx, params.SessionId) {
+		ctx.JSON(http.StatusForbidden, gin.H{"ok": false, "msg": "not the owner of the session"})
+		return
+	}
 	removeData.User = user.String()
 	removeData.Meta = params
 	jsonData, _ := json.Marshal(removeData)
@@ -611,4 +620,22 @@ func (g *GuacamoleTunnelServer) DeleteShare(ctx *gin.Context) {
 		Data: jsonData,
 	})
 	ctx.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// XPAM: share links and removing participants are for the owner of the session only (with the share
+// permission); a session id from the request alone must never be enough.
+func (g *GuacamoleTunnelServer) ownsShareableSession(ctx *gin.Context, sessionID string) bool {
+	userItem, ok := ctx.Get(config.GinCtxUserKey)
+	if !ok {
+		return false
+	}
+	user, ok := userItem.(*model.User)
+	if !ok || user == nil || user.ID == "" || sessionID == "" {
+		return false
+	}
+	conn := g.Cache.GetBySessionId(sessionID)
+	if conn == nil || conn.Sess == nil || conn.Sess.User == nil || conn.Sess.User.ID != user.ID {
+		return false
+	}
+	return conn.Sess.ActionPerm != nil && conn.Sess.ActionPerm.EnableShare
 }
