@@ -1,0 +1,30 @@
+{
+  "DeveloperToolsAvailability": 1,
+  "DownloadRestrictions": 3,
+  "PrintingEnabled": false,
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "BrowserSignin": 0,
+  "SyncDisabled": true,
+  "BrowserGuestModeEnabled": false,
+  "BrowserAddPersonEnabled": false,
+  "IncognitoModeAvailability": 1,
+  "EditBookmarksEnabled": false,
+  "BookmarkBarEnabled": false,
+  "TranslateEnabled": false,
+  "PromptForDownloadLocation": false,
+  "DefaultNotificationsSetting": 2,
+  "DefaultGeolocationSetting": 2,
+  "AudioCaptureAllowed": false,
+  "VideoCaptureAllowed": false,
+  "MetricsReportingEnabled": false,
+  "URLBlocklist": [
+    "chrome://*",
+    "file://*",
+    "view-source:*",
+    "devtools://*",
+    "chrome-extension://*",
+    "javascript:*"
+  ]
+}

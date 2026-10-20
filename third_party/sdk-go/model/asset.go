@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -26,6 +27,9 @@ type SpecInfo struct {
 	PasswordSelector string `json:"password_selector"`
 	SubmitSelector   string `json:"submit_selector"`
 	HttpProxy        string `json:"proxy"`
+	// XPAM: used by the browser service
+	AllowedURLs []string          `json:"allowed_urls"`
+	Script      []json.RawMessage `json:"script"`
 }
 
 type Asset struct {

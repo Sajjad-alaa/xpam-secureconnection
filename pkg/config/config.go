@@ -30,6 +30,9 @@ type Config struct {
 	WebProxyPort             string `mapstructure:"WEB_PROXY_PORT"`
 	WebProxyRecordingEnabled bool   `mapstructure:"WEB_PROXY_RECORDING_ENABLED"`
 	WebProxyFFmpegPath       string `mapstructure:"WEB_PROXY_FFMPEG_PATH"`
+	// XPAM: browser service for web assets shown through Lion (any browser, no address bar)
+	BrowserServiceURL string `mapstructure:"BROWSER_SERVICE_URL"`
+	BrowserServiceKey string `mapstructure:"BROWSER_KEY"`
 	SSHTimeout               int    `mapstructure:"SSH_TIMEOUT"`
 	HttpRequestTimeout       int    `mapstructure:"HTTP_REQUEST_TIMEOUT"`
 
@@ -174,6 +177,7 @@ func getDefaultConfig() Config {
 		WebProxyEnabled:          true,
 		WebProxyBindHost:         "127.0.0.1",
 		WebProxyPort:             "5001",
+		BrowserServiceURL:        "http://browser:9001",
 		WebProxyRecordingEnabled: true,
 		WebProxyFFmpegPath:       "ffmpeg",
 		AccessKeyFilePath:        accessKeyFilePath,

@@ -106,6 +106,23 @@ func (s *Server) CreatByToken(ctx *gin.Context, token string) (TunnelSession, er
 	opts = append(opts, WithPlatform(&connectToken.Platform))
 	opts = append(opts, WithGateway(connectToken.Gateway))
 	opts = append(opts, WithTerminalConfig(&cfg))
+	// XPAM: web asset in the browser service (works in any browser, no address bar)
+	if connectToken.ConnectMethod.Value == connectWebBrowser {
+		width, height := ParseWidthAndHeight(ctx, &connectToken)
+		container, client, err1 := s.startXPAMBrowser(&connectToken, width, height)
+		if err1 != nil {
+			logger.Errorf("Start browser session for %s failed: %s", connectToken.Asset.String(), err1)
+			return TunnelSession{}, fmt.Errorf("%w: %s", ErrAPIService, err1.Error())
+		}
+		logger.Infof("Connect web asset %s in the browser service (%s)", connectToken.Asset.String(), container.ContainerId)
+		if _, err1 = s.JmsService.GetConnectTokenInfo(token, true); err1 != nil {
+			logger.Errorf("Try to expire connect token err: %s", err1.Error())
+		}
+		opts = append(opts, WithVirtualAppOption(container))
+		opts = append(opts, WithVirtualAppClient(client))
+		opts = append(opts, WithGateway(nil))
+		return s.Create(ctx, opts...)
+	}
 	switch connectToken.ConnectMethod.Type {
 	case connectApplet:
 		appletOptions, err1 := s.JmsService.GetConnectTokenAppletOption(token)
@@ -253,7 +270,7 @@ func WithVirtualAppOption(virtualAppOpt *model.VirtualAppContainer) TunnelOption
 	}
 }
 
-func WithVirtualAppClient(client *panda.Client) TunnelOption {
+func WithVirtualAppClient(client virtualAppReleaser) TunnelOption {
 	return func(tunnel *tunnelOption) {
 		tunnel.virtualAppClient = client
 	}
@@ -281,7 +298,7 @@ type tunnelOption struct {
 	TerminalConfig       *model.TerminalConfig
 	appletOpt            *model.AppletOption
 	virtualAppOPt        *model.VirtualAppContainer
-	virtualAppClient     *panda.Client
+	virtualAppClient     virtualAppReleaser
 	virtualAppAPIGateway *gateway.DomainGateway
 }
 
@@ -307,7 +324,7 @@ func (s *Server) Create(ctx *gin.Context, opts ...TunnelOption) (sess TunnelSess
 	}()
 	sessionProtocol := opt.Protocol
 	connectMethod := opt.authInfo.ConnectMethod.Type
-	if connectMethod != connectApplet && connectMethod != connectVirtualAPP &&
+	if connectMethod != connectApplet && connectMethod != connectVirtualAPP && opt.virtualAppOPt == nil &&
 		opt.Protocol != TypeRDP && opt.Protocol != TypeVNC && opt.appletOpt == nil {
 		return TunnelSession{}, fmt.Errorf("%w: %s", ErrUnSupportedProtocol, opt.Protocol)
 	}
