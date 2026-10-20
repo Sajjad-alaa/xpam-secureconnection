@@ -134,7 +134,7 @@ func (s *Server) startXPAMBrowser(token *model.ConnectToken, width, height int) 
 		"interactive_selector": spec.InteractiveSelector,
 		"script":               spec.Script,
 		"allowed_urls":         spec.AllowedURLs,
-		"ignore_cert":          true,
+		"ignore_cert":          !spec.VerifyCert, // XPAM: per asset (verify the site's certificate)
 	}
 	if strings.HasPrefix(token.Account.Username, "@") { // no real account (e.g. manual input not supported here)
 		body["username"], body["password"] = "", ""

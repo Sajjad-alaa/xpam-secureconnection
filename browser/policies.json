@@ -27,5 +27,6 @@
     "chrome-extension://*",
     "javascript:*"
   ],
-  "AllowFileSelectionDialogs": false
+  "AllowFileSelectionDialogs": false,
+  "SSLErrorOverrideAllowed": false
 }

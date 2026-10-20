@@ -32,6 +32,7 @@ type SpecInfo struct {
 	HttpProxy           string `json:"proxy"`
 	// XPAM: used by the browser service
 	AllowedURLs []string          `json:"allowed_urls"`
+	VerifyCert  bool              `json:"verify_cert"`
 	Script      []json.RawMessage `json:"script"`
 }
 

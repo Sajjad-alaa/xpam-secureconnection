@@ -433,6 +433,10 @@ FAILURES = {
                      'in time.', 'Open the asset again to retry.'),
     'signed_out': ('Signed out', 'The website keeps signing this account out.',
                    'Open the asset again, or ask your administrator.'),
+    'certificate': ('Certificate not trusted', "The website's certificate is not trusted, so XPAM did not open it "
+                    'and did not send the account.',
+                    'For an internal site with a self-signed certificate, ask your administrator to turn off '
+                    '"Verify the certificate" for this asset.'),
 }
 
 
@@ -609,9 +613,10 @@ class Session:
             signs_in = self.can_sign_in()
             if signs_in:
                 show_overlay(self, cdp, sid)
-            if not self.open_site(cdp, sid):
-                log(self.id, 'website not reachable: closing')
-                return self.finish(cdp, sid, 'unreachable')
+            failure = self.open_site(cdp, sid)
+            if failure:
+                log(self.id, f'website not opened ({failure}): closing')
+                return self.finish(cdp, sid, failure)
             if signs_in:
                 result, reason = self.sign_in(cdp, sid)
                 if result == 'failed':
@@ -641,20 +646,23 @@ class Session:
                 threading.Thread(target=release, args=(self.id,), daemon=True).start()
 
     def open_site(self, cdp, sid):
-        """Opens the asset's address; False when the site cannot be reached (three tries)."""
+        """Opens the asset's address: '' when it opened, else the failure reason (three tries)."""
         for attempt in range(3):
             self.unreachable = False
             try:
                 res = cdp.call('Page.navigate', {'url': self.config['url']}, timeout=40, session_id=sid)
             except TimeoutError:
-                return True  # still loading: the sign-in waits for the page
+                return ''  # still loading: the sign-in waits for the page
             error = res.get('errorText') or ''
             if not error or error == 'net::ERR_ABORTED':
-                return True
+                return ''
+            if 'CERT' in error:
+                log(self.id, 'website certificate not trusted:', error)
+                return 'certificate'
             log(self.id, 'website not reachable:', error)
             if attempt < 2:
                 cdp.pump(3)
-        return False
+        return 'unreachable'
 
     def finish(self, cdp, sid, reason):
         """Tells the user why and ends the session: the login page is never left to the user."""
@@ -1007,7 +1015,8 @@ def create(config):
             break
         except OSError:
             time.sleep(0.2)
-    log(sid, 'started for', urllib.parse.urlparse(config['url']).hostname, f'{config["width"]}x{config["height"]}')
+    log(sid, 'started for', urllib.parse.urlparse(config['url']).hostname, f'{config["width"]}x{config["height"]}',
+        '(certificate not verified)' if config.get('ignore_cert') else '(certificate verified)')
     return session
 
 
