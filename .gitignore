@@ -52,3 +52,5 @@ demo
 
 docker-compose.yaml
 .env
+__pycache__/
+*.pyc

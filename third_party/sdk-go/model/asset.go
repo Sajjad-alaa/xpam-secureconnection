@@ -26,7 +26,10 @@ type SpecInfo struct {
 	UsernameSelector string `json:"username_selector"`
 	PasswordSelector string `json:"password_selector"`
 	SubmitSelector   string `json:"submit_selector"`
-	HttpProxy        string `json:"proxy"`
+
+	SuccessSelector     string `json:"success_selector"`
+	InteractiveSelector string `json:"interactive_selector"`
+	HttpProxy           string `json:"proxy"`
 	// XPAM: used by the browser service
 	AllowedURLs []string          `json:"allowed_urls"`
 	Script      []json.RawMessage `json:"script"`

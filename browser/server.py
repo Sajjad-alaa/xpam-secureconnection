@@ -202,6 +202,11 @@ def js_click(selector):
     return f'(() => {{ const el = {js_find(selector)}; if (!el) return false; el.click(); return true; }})()'
 
 
+def js_visible(selector):
+    return (f'(() => {{ const el = {js_find(selector)}; '
+            f'return !!(el && (el.offsetParent !== null || el.getClientRects().length)); }})()')
+
+
 def js_exists(selector):
     return f'!!({js_find(selector)})'
 
@@ -228,7 +233,7 @@ def autofill(session, cdp, sid):
     username, password = cfg.get('username') or '', cfg.get('password') or ''
     mode = cfg.get('autofill') or 'basic'
     if mode == 'no' or not password:
-        return
+        return 'skipped'
     if mode == 'script' and cfg.get('script'):
         steps = sorted([s for s in cfg['script'] if isinstance(s, dict)], key=lambda s: s.get('step', 0))
         for step in steps[:128]:
@@ -246,15 +251,16 @@ def autofill(session, cdp, sid):
             elif cmd == 'open':
                 cdp.call('Page.navigate', {'url': value or target}, session_id=sid)
                 cdp.pump(2)
-        log(session.id, 'auto-login script done')
-        return
+        secret_steps = [st.get('target') for st in steps if st.get('command') == 'type'
+                        and '{SECRET}' in str(st.get('value') or '')]
+        return verify_login(session, cdp, sid, secret_steps[-1] if secret_steps else '')
     us, ps = cfg.get('username_selector') or '', cfg.get('password_selector') or ''
     sub = cfg.get('submit_selector') or ''
     if not ps:
         ps = 'css=input[type=password]'
     if not wait_for(cdp, ps, 30, sid):
         log(session.id, 'auto-login: password field not found')
-        return
+        return 'skipped'
     if username and us and wait_for(cdp, us, 5, sid):
         evaluate(cdp, js_type(us, username), sid)
     evaluate(cdp, js_type(ps, password), sid)
@@ -264,7 +270,47 @@ def autofill(session, cdp, sid):
     else:  # no submit selector: submit the form of the password field
         evaluate(cdp, f'(() => {{ const el = {js_find(ps)}; if (el && el.form) {{ el.form.requestSubmit ? '
                       f'el.form.requestSubmit() : el.form.submit(); }} }})()', sid)
-    log(session.id, 'auto-login done')
+    return verify_login(session, cdp, sid, ps)
+
+
+def verify_login(session, cdp, sid, password_selector):
+    """
+    'ok' when the sign-in worked: the success selector appeared, or (without one) the login form is
+    gone. An interactive area (MFA, captcha) gives the user up to three minutes to finish it.
+    """
+    cfg = session.config
+    success = cfg.get('success_selector') or ''
+    interactive = cfg.get('interactive_selector') or ''
+    if not success and not password_selector:
+        log(session.id, 'auto-login done (not verified: no success selector)')
+        return 'ok'
+    cdp.pump(3)  # the form is sent and the next page loads
+    end, waiting_for_user = time.time() + 20, False
+    while time.time() < end:
+        try:
+            if success and evaluate(cdp, js_visible(success), sid):
+                log(session.id, 'auto-login done')
+                return 'ok'
+            if interactive and not waiting_for_user and evaluate(cdp, js_visible(interactive), sid):
+                waiting_for_user, end = True, time.time() + 180
+                log(session.id, 'auto-login: waiting for the user to finish the verification')
+            if not success and not waiting_for_user and not evaluate(cdp, js_visible(password_selector), sid):
+                log(session.id, 'auto-login done')
+                return 'ok'
+        except (TimeoutError, RuntimeError):
+            pass  # the page is changing
+        cdp.pump(1)
+    log(session.id, 'auto-login FAILED: the site did not accept the account')
+    return 'failed'
+
+
+LOGIN_FAILED_PAGE = 'data:text/html;base64,' + base64.b64encode(
+    b'<html><head><title>Sign-in failed</title></head><body style="font-family:sans-serif;background:#1e1e1e;'
+    b'color:#ddd;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">'
+    b'<div style="text-align:center;max-width:560px"><h2>Automatic sign-in failed</h2>'
+    b'<p>The website did not accept the account stored in XPAM (the password may have changed).</p>'
+    b'<p>Ask your administrator to update the account. This session closes in a few seconds.</p>'
+    b'</div></body></html>').decode()
 
 
 # ---------------------------------------------------------------- sessions
@@ -379,12 +425,22 @@ class Session:
                 self.attach(cdp, info)
             # pages may already be attached through the "target created" events
             first = next(iter(self.attached.values()), None)
+            result = 'skipped'
             if first:
                 try:
-                    autofill(self, cdp, first)
+                    result = autofill(self, cdp, first)
                 except Exception as e:
                     log(self.id, 'auto-login failed:', e.__class__.__name__)
             self.config['password'] = ''  # not needed any more
+            if result == 'failed':
+                # nobody gets to use the login page with other credentials: tell the user and close
+                try:
+                    cdp.call('Page.navigate', {'url': LOGIN_FAILED_PAGE}, session_id=first)
+                except Exception:
+                    pass
+                cdp.pump(8)
+                threading.Thread(target=release, args=(self.id,), daemon=True).start()
+                return
             while not self.closed.is_set():
                 if time.time() > deadline:
                     log(self.id, 'maximum session time reached')
@@ -495,7 +551,8 @@ def clean_config(data):
         raise ValueError('invalid url')
     width = max(640, min(int(data.get('width') or 1366), 3840))
     height = max(480, min(int(data.get('height') or 768), 2160))
-    keep = ('username', 'password', 'autofill', 'username_selector', 'password_selector', 'submit_selector')
+    keep = ('username', 'password', 'autofill', 'username_selector', 'password_selector', 'submit_selector',
+            'success_selector', 'interactive_selector')
     config = {k: str(data.get(k) or '')[:4096] for k in keep}
     config.update(url=url, width=width - width % 2, height=height - height % 2,
                   script=data.get('script') if isinstance(data.get('script'), list) else [],

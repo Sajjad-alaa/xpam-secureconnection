@@ -121,18 +121,20 @@ func (s *Server) startXPAMBrowser(token *model.ConnectToken, width, height int) 
 		secret = token.Account.Secret
 	}
 	body := map[string]any{
-		"url":               target,
-		"width":             width,
-		"height":            height,
-		"username":          token.Account.Username,
-		"password":          secret,
-		"autofill":          spec.Autofill,
-		"username_selector": spec.UsernameSelector,
-		"password_selector": spec.PasswordSelector,
-		"submit_selector":   spec.SubmitSelector,
-		"script":            spec.Script,
-		"allowed_urls":      spec.AllowedURLs,
-		"ignore_cert":       true,
+		"url":                  target,
+		"width":                width,
+		"height":               height,
+		"username":             token.Account.Username,
+		"password":             secret,
+		"autofill":             spec.Autofill,
+		"username_selector":    spec.UsernameSelector,
+		"password_selector":    spec.PasswordSelector,
+		"submit_selector":      spec.SubmitSelector,
+		"success_selector":     spec.SuccessSelector,
+		"interactive_selector": spec.InteractiveSelector,
+		"script":               spec.Script,
+		"allowed_urls":         spec.AllowedURLs,
+		"ignore_cert":          true,
 	}
 	if strings.HasPrefix(token.Account.Username, "@") { // no real account (e.g. manual input not supported here)
 		body["username"], body["password"] = "", ""
