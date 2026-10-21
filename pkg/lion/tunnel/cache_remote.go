@@ -41,6 +41,7 @@ type Config struct {
 	// Defaults to "127.0.0.1:6379".
 	Addr string
 
+	Username string
 	Password string
 
 	DBIndex int
@@ -120,6 +121,7 @@ func NewGuaTunnelRedisCache(conf Config) (*GuaTunnelRedisCache, error) {
 			MasterName:       sentinelServiceName,
 			SentinelAddrs:    sentinelHosts,
 			SentinelPassword: conf.SentinelPassword,
+			Username:         conf.Username,
 			Password:         conf.Password,
 			DB:               conf.DBIndex,
 			TLSConfig:        tlsCfg,
@@ -128,6 +130,7 @@ func NewGuaTunnelRedisCache(conf Config) (*GuaTunnelRedisCache, error) {
 	} else {
 		rdb = redis.NewClient(&redis.Options{
 			Addr:      conf.Addr,
+			Username:  conf.Username,
 			Password:  conf.Password,
 			DB:        conf.DBIndex,
 			TLSConfig: tlsCfg,

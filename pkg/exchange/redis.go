@@ -49,6 +49,7 @@ type Config struct {
 	// If not empty "Addr" is ignored.
 	Clusters []string
 
+	Username    string
 	Password    string
 	DialTimeout time.Duration
 
@@ -116,6 +117,7 @@ func newRedisManager(cfg Config) (*redisRoomManager, error) {
 		}
 		client = redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs:        cfg.Clusters,
+			Username:     cfg.Username,
 			Password:     cfg.Password,
 			DialTimeout:  cfg.DialTimeout,
 			ReadTimeout:  redisCommandTimeout,
@@ -124,6 +126,7 @@ func newRedisManager(cfg Config) (*redisRoomManager, error) {
 			MaxRetries:   -1,
 			TLSConfig:    tlsCfg,
 			ClusterSlots: common.RedisClusterSlots(cfg.Clusters, redis.Options{
+				Username:     cfg.Username,
 				Password:     cfg.Password,
 				DialTimeout:  cfg.DialTimeout,
 				ReadTimeout:  redisCommandTimeout,
@@ -144,6 +147,7 @@ func newRedisManager(cfg Config) (*redisRoomManager, error) {
 			MasterName:       sentinelServiceName,
 			SentinelAddrs:    sentinelHosts,
 			SentinelPassword: cfg.SentinelPassword,
+			Username:         cfg.Username,
 			Password:         cfg.Password,
 			DB:               cfg.DBIndex,
 			DialTimeout:      cfg.DialTimeout,
@@ -157,6 +161,7 @@ func newRedisManager(cfg Config) (*redisRoomManager, error) {
 		client = redis.NewClient(&redis.Options{
 			Network:      cfg.Network,
 			Addr:         cfg.Addr,
+			Username:     cfg.Username,
 			Password:     cfg.Password,
 			DB:           cfg.DBIndex,
 			DialTimeout:  cfg.DialTimeout,

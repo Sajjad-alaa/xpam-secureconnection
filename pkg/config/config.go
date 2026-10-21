@@ -31,10 +31,10 @@ type Config struct {
 	WebProxyRecordingEnabled bool   `mapstructure:"WEB_PROXY_RECORDING_ENABLED"`
 	WebProxyFFmpegPath       string `mapstructure:"WEB_PROXY_FFMPEG_PATH"`
 	// XPAM: browser service for web assets shown through Lion (any browser, no address bar)
-	BrowserServiceURL string `mapstructure:"BROWSER_SERVICE_URL"`
-	BrowserServiceKey string `mapstructure:"BROWSER_KEY"`
-	SSHTimeout               int    `mapstructure:"SSH_TIMEOUT"`
-	HttpRequestTimeout       int    `mapstructure:"HTTP_REQUEST_TIMEOUT"`
+	BrowserServiceURL  string `mapstructure:"BROWSER_SERVICE_URL"`
+	BrowserServiceKey  string `mapstructure:"BROWSER_KEY"`
+	SSHTimeout         int    `mapstructure:"SSH_TIMEOUT"`
+	HttpRequestTimeout int    `mapstructure:"HTTP_REQUEST_TIMEOUT"`
 
 	LogLevel string `mapstructure:"LOG_LEVEL"`
 
@@ -49,10 +49,12 @@ type Config struct {
 	ShowHiddenFile      bool   `mapstructure:"SFTP_SHOW_HIDDEN_FILE"`
 	ReuseConnection     bool   `mapstructure:"REUSE_CONNECTION"`
 
-	ShareRoomType string   `mapstructure:"SHARE_ROOM_TYPE"`
-	RedisHost     string   `mapstructure:"REDIS_HOST"`
-	RedisPort     string   `mapstructure:"REDIS_PORT"`
-	RedisPassword string   `mapstructure:"REDIS_PASSWORD"`
+	ShareRoomType string `mapstructure:"SHARE_ROOM_TYPE"`
+	RedisHost     string `mapstructure:"REDIS_HOST"`
+	RedisPort     string `mapstructure:"REDIS_PORT"`
+	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
+	// XPAM: a Redis account limited to this service's keys and channels (ACL user)
+	RedisUsername string   `mapstructure:"REDIS_USERNAME"`
 	RedisDBIndex  int      `mapstructure:"REDIS_DB_ROOM"`
 	RedisClusters []string `mapstructure:"REDIS_CLUSTERS"`
 

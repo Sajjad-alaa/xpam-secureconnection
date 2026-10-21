@@ -14,10 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/jumpserver-dev/sdk-go/common"
-	kokocommon "github.com/jumpserver/koko/pkg/common"
 	"github.com/jumpserver-dev/sdk-go/model"
 	"github.com/jumpserver-dev/sdk-go/service"
 	"github.com/jumpserver-dev/sdk-go/service/panda"
+	kokocommon "github.com/jumpserver/koko/pkg/common"
 	"github.com/jumpserver/koko/pkg/config"
 	"github.com/jumpserver/koko/pkg/lion/middleware"
 	"github.com/jumpserver/koko/pkg/lion/session"
@@ -151,6 +151,7 @@ func newGuaTunnelCache() tunnel.GuaTunnelCache {
 		}
 		redisCache, err := tunnel.NewGuaTunnelRedisCache(tunnel.Config{
 			Addr:     net.JoinHostPort(cfg.RedisHost, cfg.RedisPort),
+			Username: cfg.RedisUsername,
 			Password: cfg.RedisPassword,
 			DBIndex:  cfg.RedisDBIndex,
 

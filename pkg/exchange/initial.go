@@ -31,6 +31,7 @@ func Initial() {
 		sslKeyPath := filepath.Join(conf.CertsFolderPath, "redis_client.key")
 		manager, err = newRedisManager(Config{
 			Addr:     net.JoinHostPort(conf.RedisHost, conf.RedisPort),
+			Username: conf.RedisUsername,
 			Password: conf.RedisPassword,
 			Clusters: conf.RedisClusters,
 			DBIndex:  conf.RedisDBIndex,
