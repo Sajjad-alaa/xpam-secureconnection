@@ -535,6 +535,7 @@ class Session:
         w, h = self.config['width'], self.config['height']
         os.chmod(self.dir, 0o700)
         env = dict(os.environ, DISPLAY=f':{self.display}', HOME=self.dir)
+        env.pop('BROWSER_KEY', None)  # (the API key stays with this server: the browser and VNC do not need it)
         for stale in (f'/tmp/.X{self.display}-lock', f'/tmp/.X11-unix/X{self.display}'):
             try:
                 os.unlink(stale)  # left behind by an Xvfb that had to be killed
