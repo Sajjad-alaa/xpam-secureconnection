@@ -1114,7 +1114,7 @@ def shutdown(*_):
     os._exit(0)
 
 
-if __name__ == '__main__':
+def main():
     import faulthandler
     faulthandler.register(signal.SIGUSR1, all_threads=True)  # docker kill -s USR1: thread stacks to the log
     if not KEY:
@@ -1127,3 +1127,7 @@ if __name__ == '__main__':
     server = ThreadingHTTPServer(('0.0.0.0', int(os.environ.get('BROWSER_PORT', '9001'))), Handler)
     log('XPAM browser service listening on', server.server_address, 'advertising', ADVERTISE)
     server.serve_forever()
+
+
+if __name__ == '__main__':
+    main()
