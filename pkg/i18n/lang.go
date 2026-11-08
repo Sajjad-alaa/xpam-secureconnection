@@ -21,29 +21,12 @@ const (
 var (
 	langMap = make(map[LanguageCode]*gotext.Locale)
 
-	allLangCodes = []LanguageCode{ZH, EN, JA, ZHHant, PtBr, Ko, Ru, Es, Vi}
+	// XPAM is English only: the language menu offers English and every saved language resolves to it
+	allLangCodes = []LanguageCode{EN}
 
-	AllLangCodesStr = []string{"English", "中文", "繁體中文", "日本語", "Português", "한국어", "Русский", "Español", "Tiếng Việt"}
-	AllCodes        = []LanguageCode{EN, ZH, ZHHant, JA, PtBr, Ko, Ru, Es, Vi}
+	AllLangCodesStr = []string{"English"}
+	AllCodes        = []LanguageCode{EN}
 )
-
-var i18nCodeMap = map[string]LanguageCode{
-	"zh":      ZH,
-	"en":      EN,
-	"ja":      JA,
-	"pt-br":   PtBr,
-	"pt_br":   PtBr,
-	"pt":      PtBr,
-	"zh-cn":   ZH,
-	"zh_cn":   ZH,
-	"zh-hans": ZH,
-	"zh-hant": ZHHant,
-	"zh_hant": ZHHant,
-	"ru":      Ru,
-	"ko":      Ko,
-	"es":      Es,
-	"vi":      Vi,
-}
 
 // coreLangCodeMap koko 语言代码到 Core 语言代码的映射，仅列出无法直接转换的部分
 var coreLangCodeMap = map[LanguageCode]string{

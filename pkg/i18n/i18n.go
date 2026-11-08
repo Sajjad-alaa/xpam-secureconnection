@@ -25,16 +25,9 @@ func setupLangMap(localePath string) {
 	}
 }
 
+// NewLang resolves any language code to English: XPAM is English only (a saved "zh" no longer
+// switches the terminal to the built-in Chinese texts).
 func NewLang(code string) LanguageCode {
-	code = strings.ToLower(code)
-	if strings.Contains(code, "en") {
-		return EN
-	} else if strings.Contains(code, "ja") {
-		return JA
-	}
-	if i18nCode, ok := i18nCodeMap[code]; ok {
-		return i18nCode
-	}
 	return EN
 }
 
