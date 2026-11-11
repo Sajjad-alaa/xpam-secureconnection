@@ -118,7 +118,7 @@ func (e ErrUSQLNoSupported) Error() string {
 
 var (
 	ErrUnSupportedProtocol = errors.New("unsupported protocol")
-	ErrK8sNoPrivileged     = errors.New("koko deployment lacks privileged permission")
+	ErrK8sNoPrivileged     = errors.New("the connection service lacks privileged permission")
 
 	ErrKubectlClient = ErrNoClient{"Kubectl"}
 

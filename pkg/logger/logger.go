@@ -37,7 +37,11 @@ func Initial() {
 	logger.SetLevel(level)
 
 	// Output to file
-	logFilePath := filepath.Join(conf.LogDirPath, "koko.log")
+	logFilePath := filepath.Join(conf.LogDirPath, "secureconnection.log")
+	// (the file was named koko.log before: an upgraded installation keeps writing to the same log under the new name)
+	if oldPath := filepath.Join(conf.LogDirPath, "koko.log"); fileExists(oldPath) && !fileExists(logFilePath) {
+		_ = os.Rename(oldPath, logFilePath)
+	}
 	rotateFileHook, err := NewRotateFileHook(RotateFileConfig{
 		Filename:   logFilePath,
 		MaxSize:    50,
@@ -96,4 +100,9 @@ func Fatal(args ...interface{}) {
 
 func Fatalf(format string, args ...interface{}) {
 	logrus.Fatalf(format, args...)
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

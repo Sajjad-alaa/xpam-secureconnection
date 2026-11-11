@@ -9,18 +9,21 @@ import (
 	"github.com/jumpserver/koko/pkg/config"
 )
 
+// textDomain is the name of the translation files (locale/<lang>/LC_MESSAGES/<textDomain>.mo).
+const textDomain = "secureconnection"
+
 func Initial() {
 	cf := config.GetConf()
 	localePath := path.Join(cf.RootPath, "locale")
 	lowerCode := strings.ToLower(cf.LanguageCode)
-	gotext.Configure(localePath, lowerCode, "koko")
+	gotext.Configure(localePath, lowerCode, textDomain)
 	setupLangMap(localePath)
 }
 
 func setupLangMap(localePath string) {
 	for _, code := range allLangCodes {
 		enLocal := gotext.NewLocale(localePath, code.String())
-		enLocal.AddDomain("koko")
+		enLocal.AddDomain(textDomain)
 		langMap[code] = enLocal
 	}
 }

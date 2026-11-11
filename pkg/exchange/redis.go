@@ -19,15 +19,15 @@ import (
 )
 
 const (
-	globalRoomsKey = "JUMPSERVER:KOKO:ROOMS"
-	roomOwnersKey  = "JUMPSERVER:KOKO:ROOM:OWNERS"
-	managerKeyBase = "JUMPSERVER:KOKO:MANAGER:"
+	globalRoomsKey = "XPAM:SECURECONNECTION:ROOMS"
+	roomOwnersKey  = "XPAM:SECURECONNECTION:ROOM:OWNERS"
+	managerKeyBase = "XPAM:SECURECONNECTION:MANAGER:"
 
-	eventsChannel = "JUMPSERVER:KOKO:EVENTS:CHANNEL"
+	eventsChannel = "XPAM:SECURECONNECTION:EVENTS:CHANNEL"
 
-	resultsChannel = "JUMPSERVER:KOKO:EVENTS:RESULT"
+	resultsChannel = "XPAM:SECURECONNECTION:EVENTS:RESULT"
 
-	sessionsChannelPrefix = "JMS:KOKO:SESSIONS:"
+	sessionsChannelPrefix = "XPAM:SECURECONNECTION:SESSIONS:"
 
 	redisRequestTimeout = 10 * time.Second
 	redisCommandTimeout = 10 * time.Second

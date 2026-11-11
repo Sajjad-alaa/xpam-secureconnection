@@ -66,7 +66,7 @@ type Config struct {
 	GuaHost    string `mapstructure:"GUA_HOST"`
 	GuaPort    string `mapstructure:"GUA_PORT"`
 
-	CleanDriveScheduleTime int `mapstructure:"JUMPSERVER_CLEAN_DRIVE_SCHEDULE_TIME"`
+	CleanDriveScheduleTime int `mapstructure:"XPAM_CLEAN_DRIVE_SCHEDULE_TIME"`
 
 	EnableVideoWorker bool   `mapstructure:"ENABLE_VIDEO_WORKER"`
 	VideoWorkerHost   string `mapstructure:"VIDEO_WORKER_HOST"`
@@ -82,7 +82,7 @@ type Config struct {
 
 	EnableReversePortForward bool `mapstructure:"ENABLE_REVERSE_PORT_FORWARD"`
 
-	KokoPrivileged bool `mapstructure:"KOKO_PRIVILEGED"`
+	KokoPrivileged bool `mapstructure:"SECURECONNECTION_PRIVILEGED"`
 
 	HiddenFields []string `mapstructure:"HIDDEN_FIELDS"`
 
@@ -257,6 +257,17 @@ func loadConfigFromEnv(conf *Config) {
 		envItem := strings.SplitN(item, "=", 2)
 		if len(envItem) == 2 {
 			envViper.Set(envItem[0], viper.Get(envItem[0]))
+		}
+	}
+	// (names used before the rename: still honoured when the new name is not set)
+	for newName, oldName := range map[string]string{
+		"SECURECONNECTION_PRIVILEGED":    "KOKO_PRIVILEGED",
+		"XPAM_CLEAN_DRIVE_SCHEDULE_TIME": "JUMPSERVER_CLEAN_DRIVE_SCHEDULE_TIME",
+	} {
+		if _, ok := os.LookupEnv(newName); !ok {
+			if value, ok := os.LookupEnv(oldName); ok {
+				envViper.Set(newName, value)
+			}
 		}
 	}
 	if err := envViper.Unmarshal(conf); err == nil {

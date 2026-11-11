@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/spf13/viper"
 
 	"github.com/jumpserver/koko/pkg/lion/guacd"
 	"github.com/jumpserver/koko/pkg/logger"
@@ -49,9 +48,9 @@ func isDeniedRemoteAppProgram(name string) bool {
 // RemoteApp windows look much better with these; desktops keep the bandwidth-saving defaults.
 // Applied only when the operator has not set the corresponding environment variable.
 var remoteAppDisplayDefaults = map[string]string{ // env key -> guacd parameter
-	"JUMPSERVER_ENABLE_FONT_SMOOTHING":   guacd.RDPEnableFontSmoothing,
-	"JUMPSERVER_ENABLE_THEMING":          guacd.RDPEnableTheming,
-	"JUMPSERVER_ENABLE_FULL_WINDOW_DRAG": guacd.RDPEnableFullWindowDrag,
+	"XPAM_ENABLE_FONT_SMOOTHING":   guacd.RDPEnableFontSmoothing,
+	"XPAM_ENABLE_THEMING":          guacd.RDPEnableTheming,
+	"XPAM_ENABLE_FULL_WINDOW_DRAG": guacd.RDPEnableFullWindowDrag,
 }
 
 type remoteAppSetting struct {
@@ -163,7 +162,7 @@ func applyRemoteApp(conf *guacd.Configuration, asset *model.Asset, platform *mod
 	conf.SetParameter(guacd.RDPRemoteAppDir, setting.Dir)
 	conf.SetParameter(guacd.RDPRemoteAppArgs, setting.Args)
 	for envKey, param := range remoteAppDisplayDefaults {
-		if viper.GetString(envKey) == "" {
+		if displayEnv(envKey) == "" {
 			conf.SetParameter(param, BoolTrue)
 		}
 	}

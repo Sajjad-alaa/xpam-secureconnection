@@ -24,13 +24,13 @@ import (
 )
 
 const (
-	eventsChannel = "JUMPSERVER:LION:EVENTS:CHANNEL"
+	eventsChannel = "XPAM:DESKTOP:EVENTS:CHANNEL"
 
-	resultsChannel = "JUMPSERVER:LION:EVENTS:RESULT"
+	resultsChannel = "XPAM:DESKTOP:EVENTS:RESULT"
 
-	sessionEventsChannel = "JUMPSERVER:LION:EVENTS:SESSIONS"
+	sessionEventsChannel = "XPAM:DESKTOP:EVENTS:SESSIONS"
 
-	sessionsChannelPrefix = "JUMPSERVER:LION:SESSIONS"
+	sessionsChannelPrefix = "XPAM:DESKTOP:SESSIONS"
 
 	redisOperationTimeout = 5 * time.Second
 	redisRequestTimeout   = 20 * time.Second

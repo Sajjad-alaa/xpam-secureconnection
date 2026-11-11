@@ -1,6 +1,8 @@
 package session
 
 import (
+	"strings"
+
 	"github.com/spf13/viper"
 
 	"github.com/jumpserver/koko/pkg/lion/guacd"
@@ -45,7 +47,7 @@ func (d Display) GetDisplayParams() map[string]string {
 	res := make(map[string]string)
 	for envKey, displayParam := range d.data {
 		res[displayParam.Key] = displayParam.DefaultValue
-		if value := viper.GetString(envKey); value != "" {
+		if value := displayEnv(envKey); value != "" {
 			switch displayParam.valueType {
 			case Boolean:
 				booleanValue := viper.GetBool(envKey)
@@ -59,26 +61,38 @@ func (d Display) GetDisplayParams() map[string]string {
 }
 
 var RDPDisplay = Display{data: map[string]DisplayParameter{
-	"JUMPSERVER_COLOR_DEPTH":                colorDepth,
-	"JUMPSERVER_DPI":                        dpi,
-	"JUMPSERVER_DISABLE_AUDIO":              disableAudio,
-	"JUMPSERVER_ENABLE_WALLPAPER":           enableWallpaper,
-	"JUMPSERVER_ENABLE_THEMING":             enableTheming,
-	"JUMPSERVER_ENABLE_FONT_SMOOTHING":      enableFontSmoothing,
-	"JUMPSERVER_ENABLE_FULL_WINDOW_DRAG":    enableFullWindowDrag,
-	"JUMPSERVER_ENABLE_DESKTOP_COMPOSITION": enableDesktopComposition,
-	"JUMPSERVER_ENABLE_MENU_ANIMATIONS":     enableMenuAnimations,
-	"JUMPSERVER_DISABLE_BITMAP_CACHING":     disableBitmapCaching,
-	"JUMPSERVER_DISABLE_OFFSCREEN_CACHING":  disableOffscreenCaching,
-	"JUMPSERVER_ENABLE_CONSOLE_AUDIO":       enableConsoleAudio,
-	"JUMPSERVER_ENABLE_AUDIO_INPUT":         enableAudioInput,
+	"XPAM_COLOR_DEPTH":                colorDepth,
+	"XPAM_DPI":                        dpi,
+	"XPAM_DISABLE_AUDIO":              disableAudio,
+	"XPAM_ENABLE_WALLPAPER":           enableWallpaper,
+	"XPAM_ENABLE_THEMING":             enableTheming,
+	"XPAM_ENABLE_FONT_SMOOTHING":      enableFontSmoothing,
+	"XPAM_ENABLE_FULL_WINDOW_DRAG":    enableFullWindowDrag,
+	"XPAM_ENABLE_DESKTOP_COMPOSITION": enableDesktopComposition,
+	"XPAM_ENABLE_MENU_ANIMATIONS":     enableMenuAnimations,
+	"XPAM_DISABLE_BITMAP_CACHING":     disableBitmapCaching,
+	"XPAM_DISABLE_OFFSCREEN_CACHING":  disableOffscreenCaching,
+	"XPAM_ENABLE_CONSOLE_AUDIO":       enableConsoleAudio,
+	"XPAM_ENABLE_AUDIO_INPUT":         enableAudioInput,
 }}
 
 var VNCDisplay = Display{data: map[string]DisplayParameter{
-	"JUMPSERVER_COLOR_DEPTH":       colorDepth,
-	"JUMPSERVER_VNC_CURSOR_RENDER": vncCursorRender,
+	"XPAM_COLOR_DEPTH":       colorDepth,
+	"XPAM_VNC_CURSOR_RENDER": vncCursorRender,
 }}
 
 var RDPBuiltIn = map[string]string{
 	guacd.RDPDisableGlyphCaching: BoolTrue,
+}
+
+// displayEnv reads a display option from the environment: the XPAM_* name, or the name it had before the rename
+// (JUMPSERVER_*), which is still honoured.
+func displayEnv(key string) string {
+	if value := viper.GetString(key); value != "" {
+		return value
+	}
+	if strings.HasPrefix(key, "XPAM_") {
+		return viper.GetString("JUMPSERVER_" + strings.TrimPrefix(key, "XPAM_"))
+	}
+	return ""
 }

@@ -132,7 +132,7 @@ func (c *Client) SetReqHeaders(req *http.Request, params []map[string]string) {
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	req.Header.Set("User-Agent", "koko-client")
+	req.Header.Set("User-Agent", "secureconnection-client")
 	c.setAuthHeader(req)
 	if len(params) >= 2 {
 		for k, v := range params[1] {
