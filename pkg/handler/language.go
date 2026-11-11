@@ -4,10 +4,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/i18n"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/i18n"
 )
 
 func getUserDefaultLangCode(user *model.User) string {

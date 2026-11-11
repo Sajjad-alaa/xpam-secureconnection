@@ -13,14 +13,14 @@ import (
 	"github.com/pkg/sftp"
 	gossh "golang.org/x/crypto/ssh"
 
-	"github.com/jumpserver-dev/sdk-go/common"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	com "github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/session"
-	"github.com/jumpserver/koko/pkg/sshcert"
+	"xpam/sdk-go/common"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	com "xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/session"
+	"xpam/secureconnection/pkg/sshcert"
 )
 
 type AssetDir struct {
@@ -595,7 +595,7 @@ func (ad *AssetDir) AtomicReplace(sourcePath, targetPath string) error {
 		return err
 	}
 
-	backupPath := filepath.Join(filepath.Dir(targetRealPath), fmt.Sprintf(".jumpserver-backup-%s.tmp", com.UUID()))
+	backupPath := filepath.Join(filepath.Dir(targetRealPath), fmt.Sprintf(".xpam-backup-%s.tmp", com.UUID()))
 	if err := sourceConn.client.Rename(targetRealPath, backupPath); err != nil {
 		return err
 	}

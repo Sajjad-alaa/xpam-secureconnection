@@ -12,9 +12,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/jumpserver/koko/internal/sessiontools"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/internal/sessiontools"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 type webSFTPAgentToolExecutor struct {

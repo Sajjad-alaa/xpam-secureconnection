@@ -11,10 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/lion/tunnel"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/desktop/tunnel"
 )
 
 func TestShareConnectionLifecycle(t *testing.T) {

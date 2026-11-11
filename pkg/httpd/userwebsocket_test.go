@@ -13,7 +13,7 @@ import (
 	"time"
 
 	gorilla "github.com/gorilla/websocket"
-	"github.com/jumpserver/koko/pkg/httpd/ws"
+	"xpam/secureconnection/pkg/httpd/ws"
 )
 
 func TestTerminalCloseCancelsOnlyItsContext(t *testing.T) {

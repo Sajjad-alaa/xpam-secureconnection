@@ -15,9 +15,9 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/jumpserver/koko/pkg/srvconn"
 	mssql "github.com/microsoft/go-mssqldb"
 	go_ora "github.com/sijms/go-ora/v2"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 const maxNativeSQLRows = 1000

@@ -14,8 +14,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const (
@@ -872,7 +872,7 @@ func (m *redisRoomManager) run() {
 						}
 						continue
 					}
-					logger.Infof("The current KoKo node has no session room %s", req.RoomId)
+					logger.Infof("The current SecureConnection node has no session room %s", req.RoomId)
 					// 非本节点 koko 创建的session
 				case LeaveEvent:
 					if state, ok := redisUserCons[req.RoomId]; ok {

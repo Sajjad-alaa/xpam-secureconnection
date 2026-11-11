@@ -6,7 +6,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/jumpserver/koko/internal/tui"
+	"xpam/secureconnection/internal/tui"
 )
 
 // Keep the help text itself focused so its native keyboard and wheel scrolling

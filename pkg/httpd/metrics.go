@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 const (

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
 )
 
 func TestWebCoreServicePreservesAuthenticationAndScript(t *testing.T) {

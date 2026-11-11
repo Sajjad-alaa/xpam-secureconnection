@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type graphicalShare interface {

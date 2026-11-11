@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) SearchPermAsset(userId, key string) (res model.PermAssetList, err error) {

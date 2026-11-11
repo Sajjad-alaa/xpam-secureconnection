@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 type DatabaseConfig struct {

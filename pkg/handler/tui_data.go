@@ -10,11 +10,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
 
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 const tuiPageSize = 50

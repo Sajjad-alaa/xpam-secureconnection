@@ -103,7 +103,7 @@ func registerMySQLTLS(config MySQLConfig) (string, error) {
 		}
 		tlsConfig.Certificates = []tls.Certificate{certificate}
 	}
-	name := fmt.Sprintf("koko-agent-tool-%d", mysqlTLSSequence.Add(1))
+	name := fmt.Sprintf("xpam-agent-tool-%d", mysqlTLSSequence.Add(1))
 	if err := mysqlDriver.RegisterTLSConfig(name, tlsConfig); err != nil {
 		return "", fmt.Errorf("register MySQL TLS config: %w", err)
 	}

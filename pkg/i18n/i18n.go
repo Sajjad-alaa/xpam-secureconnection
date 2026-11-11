@@ -6,7 +6,7 @@ import (
 
 	"github.com/leonelquinteros/gotext"
 
-	"github.com/jumpserver/koko/pkg/config"
+	"xpam/secureconnection/pkg/config"
 )
 
 // textDomain is the name of the translation files (locale/<lang>/LC_MESSAGES/<textDomain>.mo).

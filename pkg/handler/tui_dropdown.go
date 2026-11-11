@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/jumpserver/koko/internal/tui"
 	"github.com/rivo/tview"
+	"xpam/secureconnection/internal/tui"
 )
 
 type tuiAccountSearch struct {

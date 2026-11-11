@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) CreateShareRoom(data model.SharingSessionRequest) (res model.SharingSession, err error) {

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
 )
 
 type ServerStorage struct {

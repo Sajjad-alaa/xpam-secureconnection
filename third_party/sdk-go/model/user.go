@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/jumpserver-dev/sdk-go/common"
+	"xpam/sdk-go/common"
 )
 
 type User struct {

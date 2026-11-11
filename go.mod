@@ -1,4 +1,4 @@
-module github.com/jumpserver/koko
+module xpam/secureconnection
 
 go 1.26.8
 
@@ -26,7 +26,7 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jarcoal/httpmock v1.4.2
-	github.com/jumpserver-dev/sdk-go v0.0.0-20260826024103-e9e4992f746b
+	xpam/sdk-go v0.0.0-20260826024103-e9e4992f746b
 	github.com/leonelquinteros/gotext v1.7.2
 	github.com/mattn/go-runewidth v0.0.28
 	github.com/microsoft/go-mssqldb v1.11.0
@@ -170,6 +170,6 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-replace github.com/gliderlabs/ssh => github.com/jumpserver-dev/ssh v0.3.11
+replace github.com/gliderlabs/ssh => ./third_party/ssh
 
-replace github.com/jumpserver-dev/sdk-go => ./third_party/sdk-go
+replace xpam/sdk-go => ./third_party/sdk-go

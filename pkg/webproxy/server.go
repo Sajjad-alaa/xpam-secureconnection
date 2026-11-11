@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const shutdownTimeout = 5 * time.Second

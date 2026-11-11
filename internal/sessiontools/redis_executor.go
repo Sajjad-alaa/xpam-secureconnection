@@ -14,7 +14,7 @@ import (
 	"github.com/anmitsu/go-shlex"
 	"github.com/go-redis/redis/v8"
 
-	"github.com/jumpserver/koko/pkg/common"
+	"xpam/secureconnection/pkg/common"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/jumpserver-dev/sdk-go/logger"
+	"xpam/sdk-go/logger"
 )
 
 type AzureReplayStorage struct {

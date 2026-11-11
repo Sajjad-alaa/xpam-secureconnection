@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 type ValueSanitizer interface {

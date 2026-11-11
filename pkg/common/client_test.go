@@ -125,8 +125,8 @@ func TestConvertSizeToBytes(t *testing.T) {
 	data := map[string]int{
 		"100M": 100 * 1024 * 1024,
 		"10M":  10 * 1024 * 1024,
-		"1G":  1024 * 1024 * 1024,
-		"1024":1024,
+		"1G":   1024 * 1024 * 1024,
+		"1024": 1024,
 	}
 	for k, v := range data {
 		convValue := ConvertSizeToBytes(k)

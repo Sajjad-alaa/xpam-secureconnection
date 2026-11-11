@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 func NewDatabaseExecutor(

@@ -9,9 +9,9 @@ import (
 
 	"github.com/pkg/sftp"
 
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 type SftpHandler struct {

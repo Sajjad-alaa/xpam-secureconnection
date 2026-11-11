@@ -587,7 +587,7 @@ func newMCPCallToolResult(
 	result := MCPCallToolResult{
 		Meta: map[string]any{
 			MCPServerInfoMetaKey: map[string]any{
-				"name": "jumpserver-koko", "version": "1",
+				"name": "xpam-secureconnection", "version": "1",
 			},
 		},
 	}

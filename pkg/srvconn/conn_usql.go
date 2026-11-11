@@ -2,14 +2,14 @@ package srvconn
 
 import (
 	"encoding/json"
-	"github.com/jumpserver-dev/sdk-go/model"
 	"net"
 	"net/url"
 	"sort"
 	"strconv"
 	"time"
+	"xpam/sdk-go/model"
 
-	"github.com/jumpserver/koko/pkg/localcommand"
+	"xpam/secureconnection/pkg/localcommand"
 )
 
 var (

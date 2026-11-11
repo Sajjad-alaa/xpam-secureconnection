@@ -10,8 +10,8 @@ import (
 	"github.com/mattn/go-runewidth"
 	"github.com/rivo/tview"
 
-	"github.com/jumpserver/koko/internal/tui"
-	"github.com/jumpserver/koko/pkg/i18n"
+	"xpam/secureconnection/internal/tui"
+	"xpam/secureconnection/pkg/i18n"
 )
 
 func tuiDropdown() *tview.DropDown {

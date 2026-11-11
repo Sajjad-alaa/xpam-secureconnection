@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 var usqlProtocolAlias = map[string]string{

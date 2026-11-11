@@ -2,7 +2,7 @@ package storage
 
 import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
-	"github.com/jumpserver-dev/sdk-go/logger"
+	"xpam/sdk-go/logger"
 )
 
 type OBSReplayStorage struct {

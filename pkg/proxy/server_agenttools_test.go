@@ -3,7 +3,7 @@ package proxy
 import (
 	"testing"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func TestAgentToolPTYGrantIsExactAndSingleUse(t *testing.T) {

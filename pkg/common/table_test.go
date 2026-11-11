@@ -31,9 +31,8 @@ func TestNewTable_CalculateColumnsSize(t *testing.T) {
 	fmt.Println(table.fieldsSize)
 }
 
-
 func TestGetCorrectString(t *testing.T) {
 	foo := "主2erert机名"
-	a:=GetValidString(foo,2,false)
+	a := GetValidString(foo, 2, false)
 	t.Log(a == "2erert机名")
 }

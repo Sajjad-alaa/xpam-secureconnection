@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/jumpserver/koko/pkg/localcommand"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/localcommand"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const (

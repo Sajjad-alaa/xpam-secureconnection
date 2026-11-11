@@ -3,7 +3,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 type TaskFunc func(task *model.TerminalTask) error

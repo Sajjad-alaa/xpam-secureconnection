@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/jumpserver-dev/sdk-go/common"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/common"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) TerminalHeartBeat(sIds []string) (res []model.TerminalTask, err error) {

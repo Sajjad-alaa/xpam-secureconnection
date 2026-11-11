@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/logger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"xpam/secureconnection/pkg/logger"
 
-	"github.com/jumpserver/koko/pkg/localcommand"
+	"xpam/secureconnection/pkg/localcommand"
 )
 
 const (

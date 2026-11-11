@@ -3,7 +3,7 @@ package recorderstorage
 import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type OBSReplayStorage struct {

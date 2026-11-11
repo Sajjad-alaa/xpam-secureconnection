@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
 )
 
 const ContextKeyShareRecord = "validated-share-record"

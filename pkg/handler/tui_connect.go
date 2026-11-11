@@ -11,16 +11,16 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gliderlabs/ssh"
-	"github.com/jumpserver-dev/sdk-go/model"
 	"github.com/rivo/tview"
+	"xpam/sdk-go/model"
 
-	"github.com/jumpserver/koko/internal/tui"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/exchange"
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/srvconn"
-	"github.com/jumpserver/koko/pkg/zmodem"
+	"xpam/secureconnection/internal/tui"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/exchange"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/srvconn"
+	"xpam/secureconnection/pkg/zmodem"
 )
 
 // tuiOverlay confines every child (including its mouse hit area) to a centered

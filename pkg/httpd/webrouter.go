@@ -5,18 +5,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/lion"
-	"github.com/jumpserver/koko/pkg/lion/middleware"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/desktop"
+	"xpam/secureconnection/pkg/desktop/middleware"
 )
 
 func createRouter(
 	jmsService *service.JMService,
 	webSrv *Server,
-	lionRuntime *lion.Runtime,
+	lionRuntime *desktop.Runtime,
 ) *gin.Engine {
 	if lionRuntime != nil {
 		webSrv.lionMonitor = lionRuntime

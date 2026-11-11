@@ -7,7 +7,7 @@ import (
 
 	"github.com/influxdata/influxdb-client-go/v2"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 type InfluxdbStorage struct {

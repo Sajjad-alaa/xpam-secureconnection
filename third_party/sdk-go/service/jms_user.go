@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 	"net/http"
 )
 

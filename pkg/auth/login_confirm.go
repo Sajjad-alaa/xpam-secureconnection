@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type reviewOption struct {

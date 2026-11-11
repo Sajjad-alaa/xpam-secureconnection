@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/logger"
 )
 
 var k8sProxyDirname = "k8s_proxy"

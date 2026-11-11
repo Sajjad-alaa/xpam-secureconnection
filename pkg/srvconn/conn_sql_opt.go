@@ -1,6 +1,6 @@
 package srvconn
 
-import "github.com/jumpserver-dev/sdk-go/model"
+import "xpam/sdk-go/model"
 
 type sqlOption struct {
 	AssetName        string

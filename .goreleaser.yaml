@@ -10,7 +10,7 @@ before:
 
 builds:
   - id: koko
-    main: ./cmd/koko/
+    main: ./cmd/secureconnection/
     binary: koko
     goos:
       - linux
@@ -33,7 +33,7 @@ builds:
       - -X 'main.Githash={{ .ShortCommit }}'
       - -X 'main.Goversion={{ .Env.GOVERSION }}'
       - -X 'main.Version={{ .Tag }}'
-      - -X 'github.com/jumpserver/koko/pkg/config.CipherKey={{ .Env.CipherKey }}'
+      - -X 'xpam/secureconnection/pkg/config.CipherKey={{ .Env.CipherKey }}'
 
 archives:
   - format: tar.gz

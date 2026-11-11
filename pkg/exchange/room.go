@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const roomSubscriberBufferSize = 32

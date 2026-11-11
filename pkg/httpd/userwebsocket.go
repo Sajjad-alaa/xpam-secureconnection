@@ -9,18 +9,18 @@ import (
 	"net"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/srvconn"
 
 	"github.com/gin-gonic/gin"
 	gorilla "github.com/gorilla/websocket"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/httpd/ws"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/sshcert"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/httpd/ws"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/sshcert"
 )
 
 type Handler interface {

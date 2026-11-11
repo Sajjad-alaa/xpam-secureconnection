@@ -10,7 +10,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 const (

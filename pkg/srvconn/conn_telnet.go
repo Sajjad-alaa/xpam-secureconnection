@@ -11,8 +11,8 @@ import (
 	"github.com/LeeEirc/tclientlib"
 	"golang.org/x/text/transform"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/logger"
 )
 
 func NewTelnetConnection(opts ...TelnetOption) (*TelnetConnection, error) {

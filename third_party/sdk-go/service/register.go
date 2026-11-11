@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/httplib"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/httplib"
+	"xpam/sdk-go/model"
 )
 
 func RegisterTerminalAccount(coreHost, componentName, name, token string) (res model.Terminal, err error) {

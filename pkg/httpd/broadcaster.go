@@ -1,6 +1,6 @@
 package httpd
 
-import "github.com/jumpserver/koko/pkg/logger"
+import "xpam/secureconnection/pkg/logger"
 
 const MaxMessageLen = 1024
 

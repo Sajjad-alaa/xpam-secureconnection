@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/jumpserver/koko/internal/sessiontools"
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/session"
+	"xpam/secureconnection/internal/sessiontools"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/session"
 )
 
 var _ Handler = (*webSftp)(nil)

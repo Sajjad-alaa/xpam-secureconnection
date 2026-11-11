@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) SubmitCommandReview(sid string, aclId string,

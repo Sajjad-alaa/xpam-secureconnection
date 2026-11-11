@@ -11,16 +11,16 @@ import (
 
 	"github.com/LeeEirc/tclientlib"
 	"github.com/LeeEirc/terminalparser"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/srvconn"
 
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/exchange"
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/utils"
-	"github.com/jumpserver/koko/pkg/zmodem"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/exchange"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/utils"
+	"xpam/secureconnection/pkg/zmodem"
 )
 
 var (

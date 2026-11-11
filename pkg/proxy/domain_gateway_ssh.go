@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/logger"
 	gossh "golang.org/x/crypto/ssh"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/logger"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 var errNilGateway = errors.New("gateway is nil")

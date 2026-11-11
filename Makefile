@@ -8,7 +8,7 @@ GOVERSION := $(shell go version)
 CipherKey := $(shell head -c 100 /dev/urandom | base64 | head -c 32)
 
 BASEPATH := $(shell pwd)
-KOKOSRCFILE := $(BASEPATH)/cmd/koko/
+KOKOSRCFILE := $(BASEPATH)/cmd/secureconnection/
 
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
@@ -19,7 +19,7 @@ KOKOLDFLAGS+=-X 'main.Buildstamp=$(BuildTime)'
 KOKOLDFLAGS+=-X 'main.Githash=$(COMMIT)'
 KOKOLDFLAGS+=-X 'main.Goversion=$(GOVERSION)'
 KOKOLDFLAGS+=-X 'main.Version=$(VERSION)'
-KOKOLDFLAGS+=-X 'github.com/jumpserver/koko/pkg/config.CipherKey=$(CipherKey)'
+KOKOLDFLAGS+=-X 'xpam/secureconnection/pkg/config.CipherKey=$(CipherKey)'
 
 KOKOBUILD=CGO_ENABLED=1 go build -trimpath -ldflags "$(KOKOLDFLAGS) ${LDFLAGS}"
 
@@ -126,7 +126,7 @@ run: guacd
 	trap 'exit 143' TERM; \
 	LIBGHOSTTY_VT_ROOT="$$(./utils/setup-libghostty-vt.sh)"; \
 	PKG_CONFIG_PATH="$${LIBGHOSTTY_VT_ROOT}/lib/pkgconfig$${PKG_CONFIG_PATH:+:$${PKG_CONFIG_PATH}}" \
-	CGO_ENABLED=1 go run ./cmd/koko/
+	CGO_ENABLED=1 go run ./cmd/secureconnection/
 
 .PHONY: run-ui
 run-ui:

@@ -60,7 +60,7 @@ func (o *boundedDatabaseOutput) Truncated() bool {
 }
 
 func writeBackgroundSecret(name, value string) (string, error) {
-	file, err := os.CreateTemp("", "koko-agent-tool-"+name+"-*.pem")
+	file, err := os.CreateTemp("", "xpam-agent-tool-"+name+"-*.pem")
 	if err != nil {
 		return "", err
 	}

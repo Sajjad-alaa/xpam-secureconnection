@@ -12,8 +12,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/jumpserver-dev/sdk-go/httplib"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/httplib"
+	"xpam/sdk-go/model"
 )
 
 var AccessKeyUnauthorized = errors.New("access key unauthorized")

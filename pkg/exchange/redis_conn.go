@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/logger"
 )
 
 var _ io.WriteCloser = (*redisChannel)(nil)

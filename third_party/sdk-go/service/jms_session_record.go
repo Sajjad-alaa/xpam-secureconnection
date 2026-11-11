@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) RecordSessionLifecycleLog(sid string, event model.LifecycleEvent, logObj model.SessionLifecycleLog) (err error) {

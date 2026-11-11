@@ -8,7 +8,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/jumpserver/koko/internal/sessiontools"
+	"xpam/secureconnection/internal/sessiontools"
 )
 
 type versionTestExecutor struct {

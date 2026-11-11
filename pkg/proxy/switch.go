@@ -7,13 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/common"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/exchange"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/srvconn"
-	"github.com/jumpserver/koko/pkg/utils"
-	"github.com/jumpserver/koko/pkg/zmodem"
+	"xpam/sdk-go/common"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/exchange"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/srvconn"
+	"xpam/secureconnection/pkg/utils"
+	"xpam/secureconnection/pkg/zmodem"
 )
 
 type SwitchSession struct {

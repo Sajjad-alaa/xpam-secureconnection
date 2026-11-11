@@ -9,13 +9,13 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/jumpserver/koko/pkg/common"
+	"xpam/secureconnection/pkg/common"
 )
 
 var (
-	CipherKey = "JumpServer Cipher Key for KoKo !"
+	CipherKey = "XPAM SecureConnection Cipher Key"
 
-	KubectlBanner = "Welcome to JumpServer kubectl, try kubectl --help."
+	KubectlBanner = "Welcome to XPAM kubectl, try kubectl --help."
 )
 
 type Config struct {
@@ -197,7 +197,7 @@ func getDefaultConfig() Config {
 		SessionFolderPath:        sessionFolderPath,
 		LanguageCode:             "en",
 
-		Comment:                "KOKO",
+		Comment:                "SecureConnection",
 		UploadFailedReplay:     true,
 		UploadFailedFTPFile:    true,
 		ShowHiddenFile:         false,

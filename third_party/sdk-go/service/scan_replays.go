@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/common"
-	"github.com/jumpserver-dev/sdk-go/logger"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/common"
+	"xpam/sdk-go/logger"
+	"xpam/sdk-go/model"
 )
 
 func ScanRemainReplays(apiClient *JMService, replayDir string) map[string]model.RemainReplay {

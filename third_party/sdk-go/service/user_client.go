@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/httplib"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/httplib"
+	"xpam/sdk-go/model"
 )
 
 func NewUserClient(setters ...UserClientOption) *UserClient {

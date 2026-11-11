@@ -11,10 +11,10 @@ import (
 	"github.com/pires/go-proxyproto"
 	gossh "golang.org/x/crypto/ssh"
 
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/handler"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/handler"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const (

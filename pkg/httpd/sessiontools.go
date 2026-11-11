@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/internal/sessiontools"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/internal/sessiontools"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 func agentContextSnapshot(

@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/logger"
 )
 
 func LoginToTelnetSu(sc *TelnetConnection) error {

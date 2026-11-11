@@ -19,4 +19,3 @@ func TestWrapperString(t *testing.T) {
 	s4 := WrapperWarn(s)
 	fmt.Println(s4)
 }
-

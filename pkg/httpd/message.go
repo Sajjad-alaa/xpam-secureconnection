@@ -3,9 +3,9 @@ package httpd
 import (
 	"time"
 
-	"github.com/jumpserver/koko/pkg/exchange"
+	"xpam/secureconnection/pkg/exchange"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 type Message struct {

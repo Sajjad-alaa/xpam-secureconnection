@@ -9,11 +9,11 @@ import (
 	"os/exec"
 	"os/signal"
 
-	"github.com/jumpserver/koko/pkg/config"
+	"xpam/secureconnection/pkg/config"
 )
 
 const (
-	envName     = "K8S_ENCRYPTED_TOKEN"
+	envName = "K8S_ENCRYPTED_TOKEN"
 )
 
 func GetDecryptedToken() (token string, err error) {

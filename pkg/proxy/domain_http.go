@@ -10,8 +10,8 @@ import (
 
 	gossh "golang.org/x/crypto/ssh"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type domainHTTP struct {

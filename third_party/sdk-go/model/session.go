@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/common"
+	"xpam/sdk-go/common"
 )
 
 var (

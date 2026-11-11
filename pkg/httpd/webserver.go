@@ -16,14 +16,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/httpd/ws"
-	"github.com/jumpserver/koko/pkg/lion"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/desktop"
+	"xpam/secureconnection/pkg/httpd/ws"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const (
@@ -106,7 +106,7 @@ var upGrader = websocket.Upgrader{
 
 func NewServer(
 	jmsService *service.JMService,
-	lionRuntime *lion.Runtime,
+	lionRuntime *desktop.Runtime,
 ) *Server {
 	srv := &Server{broadCaster: NewBroadcaster(), apiClient: jmsService}
 	eng := createRouter(jmsService, srv, lionRuntime)

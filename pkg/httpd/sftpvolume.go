@@ -12,12 +12,12 @@ import (
 	"github.com/LeeEirc/elfinder"
 	"github.com/pkg/sftp"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 type volumeOption struct {

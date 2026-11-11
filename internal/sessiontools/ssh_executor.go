@@ -8,8 +8,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/jumpserver/koko/pkg/srvconn"
 	gossh "golang.org/x/crypto/ssh"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 const (

@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/jumpserver-dev/sdk-go/common"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/common"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) Upload(sessionID, gZipFile string) error {

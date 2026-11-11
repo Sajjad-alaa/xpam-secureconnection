@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/internal/sessiontools"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/internal/sessiontools"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 type commandExecutorFactory func(context.Context) (sessiontools.CommandExecutor, error)

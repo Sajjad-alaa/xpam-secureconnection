@@ -17,8 +17,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/auth"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/auth"
 )
 
 type fakeConnectTokenService struct {

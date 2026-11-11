@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/config"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/config"
 )
 
 type graphicalMonitor interface {

@@ -12,15 +12,15 @@ import (
 	"github.com/gliderlabs/ssh"
 	"golang.org/x/term"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/srvconn"
-	"github.com/jumpserver/koko/pkg/sshcert"
-	"github.com/jumpserver/koko/pkg/utils"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/srvconn"
+	"xpam/secureconnection/pkg/sshcert"
+	"xpam/secureconnection/pkg/utils"
 )
 
 /*

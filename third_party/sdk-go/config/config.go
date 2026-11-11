@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jumpserver-dev/sdk-go/common"
+	"xpam/sdk-go/common"
 )
 
 type CommonConfig struct {

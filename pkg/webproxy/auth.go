@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/session"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/session"
 )
 
 // A browser uses multiple HTTP connections. Its heartbeat keeps the logical

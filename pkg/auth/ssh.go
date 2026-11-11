@@ -6,14 +6,14 @@ import (
 	"strings"
 
 	"github.com/gliderlabs/ssh"
-	"github.com/jumpserver/koko/pkg/cache"
-	"github.com/jumpserver/koko/pkg/config"
 	gossh "golang.org/x/crypto/ssh"
+	"xpam/secureconnection/pkg/cache"
+	"xpam/secureconnection/pkg/config"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/sshcert"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/sshcert"
 )
 
 var authErr = errors.New("auth failed")

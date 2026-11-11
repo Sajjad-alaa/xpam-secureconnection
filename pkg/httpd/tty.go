@@ -7,16 +7,16 @@ import (
 	"io"
 	"sync"
 
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/secureconnection/pkg/srvconn"
 
 	"github.com/gliderlabs/ssh"
-	"github.com/jumpserver-dev/sdk-go/common"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/internal/sessiontools"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/exchange"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
+	"xpam/sdk-go/common"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/internal/sessiontools"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/exchange"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
 )
 
 var _ Handler = (*tty)(nil)

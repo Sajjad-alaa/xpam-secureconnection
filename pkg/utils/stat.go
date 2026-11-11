@@ -10,8 +10,8 @@ import (
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
 
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/logger"
 )
 
 func CpuLoad1Usage() float64 {

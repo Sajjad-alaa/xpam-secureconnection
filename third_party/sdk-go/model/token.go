@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/jumpserver-dev/sdk-go/common"
+	"xpam/sdk-go/common"
 )
 
 type ConnectToken struct {

@@ -12,11 +12,11 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/jumpserver/koko/pkg/srvconn"
 	"k8s.io/client-go/rest"
+	"xpam/secureconnection/pkg/srvconn"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const (

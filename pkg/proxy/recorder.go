@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	storage "github.com/jumpserver/koko/pkg/proxy/recorderstorage"
+	storage "xpam/secureconnection/pkg/proxy/recorderstorage"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	"github.com/jumpserver/koko/pkg/asciinema"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	"xpam/secureconnection/pkg/asciinema"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type CommandRecorder struct {

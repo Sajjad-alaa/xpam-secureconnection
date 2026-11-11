@@ -1,4 +1,4 @@
-module github.com/jumpserver-dev/sdk-go
+module xpam/sdk-go
 
 go 1.24.0
 

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/common"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/common"
 )
 
 const (

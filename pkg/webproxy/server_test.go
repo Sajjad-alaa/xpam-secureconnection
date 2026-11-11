@@ -6,9 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/auth"
-	"github.com/jumpserver/koko/pkg/session"
 	"io"
 	"net"
 	"net/http"
@@ -16,6 +13,9 @@ import (
 	"net/url"
 	"testing"
 	"time"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/auth"
+	"xpam/secureconnection/pkg/session"
 )
 
 func authenticatedTestProxy(t *testing.T) (*Server, createCredentialSessionResponse) {

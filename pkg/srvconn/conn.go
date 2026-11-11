@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/localcommand"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/localcommand"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type ServerConnection interface {

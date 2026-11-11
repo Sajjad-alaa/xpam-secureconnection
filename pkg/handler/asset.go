@@ -8,14 +8,14 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
 
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
-	"github.com/jumpserver/koko/pkg/sshcert"
-	"github.com/jumpserver/koko/pkg/utils"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
+	"xpam/secureconnection/pkg/sshcert"
+	"xpam/secureconnection/pkg/utils"
 )
 
 func GetInputUsername(sess io.ReadWriteCloser) (username string, err error) {

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) CreateFileOperationLog(data model.FTPLog) (err error) {

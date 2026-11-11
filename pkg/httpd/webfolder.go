@@ -1,9 +1,9 @@
 package httpd
 
 import (
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/logger"
 )
 
 var _ Handler = (*webFolder)(nil)

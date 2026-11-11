@@ -7,7 +7,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/jumpserver/koko/internal/tui"
+	"xpam/secureconnection/internal/tui"
 )
 
 type tuiDialog struct {

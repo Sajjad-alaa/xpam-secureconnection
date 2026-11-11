@@ -8,8 +8,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/jumpserver/koko/internal/tui"
-	"github.com/jumpserver/koko/pkg/i18n"
+	"xpam/secureconnection/internal/tui"
+	"xpam/secureconnection/pkg/i18n"
 )
 
 // Prefer the first letter of a word. Translations without that Latin letter

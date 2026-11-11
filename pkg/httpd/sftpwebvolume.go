@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/common"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/common"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const (
@@ -312,7 +312,7 @@ func (u *UserWebVolume) SaveFile(
 		}
 	}
 
-	tempPath := filepath.Join(filepath.Dir(path), fmt.Sprintf(".jumpserver-editor-%s.tmp", common.UUID()))
+	tempPath := filepath.Join(filepath.Dir(path), fmt.Sprintf(".xpam-editor-%s.tmp", common.UUID()))
 	removeTemp := true
 	defer func() {
 		if !removeTemp {

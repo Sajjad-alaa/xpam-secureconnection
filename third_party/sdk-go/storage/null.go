@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func NewNullStorage() (storage NullStorage) {

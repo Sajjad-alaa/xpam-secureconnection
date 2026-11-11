@@ -3,7 +3,7 @@ package panda
 import (
 	"testing"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func TestNewClient(t *testing.T) {

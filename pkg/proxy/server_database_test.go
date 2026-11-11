@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver/koko/pkg/srvconn"
+	"xpam/sdk-go/model"
+	"xpam/secureconnection/pkg/srvconn"
 )
 
 func TestNotifyDatabaseConnectionPreservesProtocolSettings(t *testing.T) {

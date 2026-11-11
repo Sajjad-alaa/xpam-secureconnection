@@ -4,9 +4,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
-	storage "github.com/jumpserver/koko/pkg/proxy/recorderstorage"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
+	storage "xpam/secureconnection/pkg/proxy/recorderstorage"
 )
 
 type StorageType interface {

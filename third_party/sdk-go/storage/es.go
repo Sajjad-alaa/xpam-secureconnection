@@ -13,8 +13,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v6/esapi"
 	elasticsearch8 "github.com/elastic/go-elasticsearch/v8"
 
-	"github.com/jumpserver-dev/sdk-go/logger"
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/logger"
+	"xpam/sdk-go/model"
 )
 
 type ESCommandStorage struct {

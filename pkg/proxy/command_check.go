@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 const (

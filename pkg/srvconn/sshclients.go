@@ -3,7 +3,7 @@ package srvconn
 import (
 	"time"
 
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type UserSSHClient struct {

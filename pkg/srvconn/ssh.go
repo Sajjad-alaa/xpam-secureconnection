@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/jumpserver/koko/pkg/common"
 	gossh "golang.org/x/crypto/ssh"
+	"xpam/secureconnection/pkg/common"
 
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/pkg/logger"
 )
 
 type SSHClientOption func(conf *SSHClientOptions)

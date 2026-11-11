@@ -10,10 +10,10 @@ import (
 
 	"github.com/gliderlabs/ssh"
 
-	"github.com/jumpserver/koko/internal/sessiontools"
-	"github.com/jumpserver/koko/pkg/exchange"
-	"github.com/jumpserver/koko/pkg/logger"
-	"github.com/jumpserver/koko/pkg/proxy"
+	"xpam/secureconnection/internal/sessiontools"
+	"xpam/secureconnection/pkg/exchange"
+	"xpam/secureconnection/pkg/logger"
+	"xpam/secureconnection/pkg/proxy"
 )
 
 const sessionReadyIdle = 500 * time.Millisecond

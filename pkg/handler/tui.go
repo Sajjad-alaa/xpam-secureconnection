@@ -11,15 +11,15 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gliderlabs/ssh"
-	"github.com/jumpserver-dev/sdk-go/model"
-	"github.com/jumpserver-dev/sdk-go/service"
 	"github.com/mattn/go-runewidth"
 	"github.com/rivo/tview"
+	"xpam/sdk-go/model"
+	"xpam/sdk-go/service"
 
-	"github.com/jumpserver/koko/internal/tui"
-	"github.com/jumpserver/koko/pkg/config"
-	"github.com/jumpserver/koko/pkg/i18n"
-	"github.com/jumpserver/koko/pkg/logger"
+	"xpam/secureconnection/internal/tui"
+	"xpam/secureconnection/pkg/config"
+	"xpam/secureconnection/pkg/i18n"
+	"xpam/secureconnection/pkg/logger"
 )
 
 const tuiWakeKey tcell.Key = -100
@@ -290,7 +290,7 @@ func newTerminalUI(sess ssh.Session, user *model.User, api, userAPI *service.JMS
 func (h *terminalUI) build() {
 	title := h.conf.HeaderTitle
 	if title == "" {
-		title = "JumpServer · Koko"
+		title = "XPAM · SecureConnection"
 	}
 	h.brand = tview.NewTextView().SetDynamicColors(true).SetTextStyle(tcell.StyleDefault.Foreground(tui.Accent).Background(tui.Panel).Bold(true)).SetWrap(false).SetTextAlign(tview.AlignLeft)
 	h.brand.SetText(cleanTUIText(title))

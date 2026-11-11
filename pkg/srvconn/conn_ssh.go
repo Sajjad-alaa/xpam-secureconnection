@@ -7,7 +7,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/text/transform"
 
-	"github.com/jumpserver/koko/pkg/common"
+	"xpam/secureconnection/pkg/common"
 )
 
 func NewSSHConnection(sess *gossh.Session, opts ...SSHOption) (*SSHConnection, error) {

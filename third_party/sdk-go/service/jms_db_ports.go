@@ -3,7 +3,7 @@ package service
 import (
 	"strconv"
 
-	"github.com/jumpserver-dev/sdk-go/model"
+	"xpam/sdk-go/model"
 )
 
 func (s *JMService) GetListenPorts() (ports []int32, err error) {
