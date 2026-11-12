@@ -945,7 +945,10 @@ class Session:
         elif method == 'Fetch.authRequired':
             ch = params.get('authChallenge') or {}
             key = (ch.get('origin'), ch.get('scheme'), ch.get('realm'))
-            if ch.get('source') == 'Server' and self.can_sign_in() and key not in self.auth_given:
+            # (only the asset's own sites get the account: an image or frame from another site answering 401 would
+            # otherwise receive the password)
+            if (ch.get('source') == 'Server' and self.can_sign_in() and key not in self.auth_given
+                    and host_allowed(self, str(ch.get('origin') or ''))):
                 self.auth_given.add(key)
                 answer = {'response': 'ProvideCredentials', 'username': self.config['username'],
                           'password': self.config['password']}
