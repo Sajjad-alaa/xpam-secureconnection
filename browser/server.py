@@ -25,9 +25,11 @@ API (only Lion calls it; Authorization: Bearer <BROWSER_KEY>):
 """
 import base64
 import hmac
+import ipaddress
 import json
 import os
 import secrets
+import select
 import shutil
 import signal
 import socket
@@ -45,6 +47,24 @@ MAX_SESSIONS = int(os.environ.get('BROWSER_MAX_SESSIONS', '10'))
 MAX_HOURS = float(os.environ.get('BROWSER_MAX_HOURS', '12'))
 ROOT = '/tmp/xpam-browser'
 FIRST_DISPLAY = 20
+
+
+def user_namespaces_work():
+    """XPAM: Chromium's sandbox (each renderer in its own namespaces under its own seccomp filter) needs user
+    namespaces; the container's seccomp profile decides whether they can be created (compose/browser.yml)."""
+    import ctypes
+    pid = os.fork()
+    if pid == 0:
+        try:
+            libc = ctypes.CDLL(None, use_errno=True)
+            os._exit(0 if libc.unshare(0x10000000) == 0 else 1)  # CLONE_NEWUSER
+        except BaseException:
+            os._exit(1)
+    _, status = os.waitpid(pid, 0)
+    return os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0
+
+
+SANDBOX = user_namespaces_work()
 
 sessions = {}
 lock = threading.Lock()
@@ -469,6 +489,157 @@ def host_allowed(session, url):
     return False
 
 
+CGNAT = ipaddress.ip_network('100.64.0.0/10')
+
+
+def internal_address(ip):
+    if getattr(ip, 'ipv4_mapped', None):
+        ip = ip.ipv4_mapped
+    return (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_unspecified
+            or ip.is_reserved or (ip.version == 4 and ip in CGNAT))
+
+
+class EgressProxy:
+    """XPAM: everything the session's browser sends goes through this proxy (Chromium's --proxy-server, also for
+    localhost; WebSockets go through CONNECT). A name is resolved here, once: an internal address is refused unless
+    the name is one of the asset's allowed sites, a loopback address always (the other sessions' DevTools ports are
+    there), and the connection goes to the address that was checked — never to a fresh lookup (no DNS rebinding).
+    Public sites (content delivery networks, sign-in providers) stay reachable."""
+
+    HEAD_LIMIT = 65536
+
+    def __init__(self, session, port):
+        self.session, self.port = session, port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(('127.0.0.1', port))
+        self.sock.listen(128)
+        self.blocked = 0
+
+    def start(self):
+        threading.Thread(target=self.accept_loop, daemon=True).start()
+
+    def close(self):
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+
+    def accept_loop(self):
+        while not self.session.closed.is_set():
+            try:
+                client, _ = self.sock.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.handle, args=(client,), daemon=True).start()
+
+    def target_address(self, host, port):
+        """(ip, port) to connect to, or None when the target is refused."""
+        host = (host or '').strip().strip('[]').lower().rstrip('.')
+        if not host:
+            return None
+        try:
+            infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        except (OSError, UnicodeError):
+            return None
+        ips = []
+        for info in infos:
+            try:
+                ips.append(ipaddress.ip_address(info[4][0].split('%')[0]))
+            except ValueError:
+                return None
+        if not ips:
+            return None
+        listed = host_allowed(self.session, f'http://{host}/' if ':' not in host else f'http://[{host}]/')
+        for ip in ips:
+            plain = ip.ipv4_mapped if getattr(ip, 'ipv4_mapped', None) else ip
+            if plain.is_loopback or plain.is_unspecified:
+                return None
+            if internal_address(ip) and not listed:
+                return None
+        return str(ips[0]), port
+
+    def refuse(self, client, target):
+        self.blocked += 1
+        if self.blocked <= 20:
+            log(self.session.id, 'blocked a request to', str(target)[:120])
+        try:
+            client.sendall(b'HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n')
+        except OSError:
+            pass
+
+    def handle(self, client):
+        upstream = None
+        try:
+            client.settimeout(30)
+            head = b''
+            while b'\r\n\r\n' not in head:
+                chunk = client.recv(8192)
+                if not chunk:
+                    return
+                head += chunk
+                if len(head) > self.HEAD_LIMIT:
+                    return
+            head, _, rest = head.partition(b'\r\n\r\n')
+            lines = head.split(b'\r\n')
+            parts = lines[0].decode('latin-1').split(' ')
+            if len(parts) != 3:
+                return
+            method, target, version = parts
+            if method == 'CONNECT':
+                host, _, port = target.rpartition(':')
+                if not port.isdigit():
+                    return
+                address = self.target_address(host, int(port))
+                if not address:
+                    self.refuse(client, target)
+                    return
+                upstream = socket.create_connection(address, timeout=15)
+                client.sendall(b'HTTP/1.1 200 Connection Established\r\n\r\n')
+                if rest:
+                    upstream.sendall(rest)
+            else:
+                url = urllib.parse.urlsplit(target)
+                if url.scheme != 'http' or not url.hostname:
+                    self.refuse(client, target)
+                    return
+                address = self.target_address(url.hostname, url.port or 80)
+                if not address:
+                    self.refuse(client, target)
+                    return
+                path = (url.path or '/') + (f'?{url.query}' if url.query else '')
+                headers = [line for line in lines[1:] if not line.lower().startswith(
+                    (b'proxy-connection:', b'proxy-authorization:', b'connection:', b'keep-alive:'))]
+                request = '\r\n'.join([f'{method} {path} {version}']).encode('latin-1') + b'\r\n' + \
+                    b'\r\n'.join(headers + [b'Connection: close']) + b'\r\n\r\n' + rest
+                upstream = socket.create_connection(address, timeout=15)
+                upstream.sendall(request)
+            self.pipe(client, upstream)
+        except (OSError, ValueError):
+            pass
+        finally:
+            for sock in (client, upstream):
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except OSError:
+                        pass
+
+    def pipe(self, a, b):
+        a.settimeout(None)
+        b.settimeout(None)
+        socks = [a, b]
+        while not self.session.closed.is_set():
+            readable, _, _ = select.select(socks, [], [], 60)
+            if not readable:
+                continue
+            for sock in readable:
+                data = sock.recv(65536)
+                if not data:
+                    return
+                (b if sock is a else a).sendall(data)
+
+
 PUBLIC_SECOND_LEVEL = {'co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go', 'mil', 'nic'}
 
 
@@ -493,6 +664,8 @@ class Session:
         self.display = display
         self.vnc_port = 5900 + display
         self.cdp_port = 9300 + display
+        self.proxy_port = 9500 + display
+        self.proxy = None
         self.password = secrets.token_urlsafe(12)[:8]  # VNC passwords are 8 characters
         self.config = config
         self.selectors = json.dumps({k: config.get(k) or '' for k in (
@@ -555,16 +728,23 @@ class Session:
             ['x11vnc', '-display', f':{self.display}', '-rfbport', str(self.vnc_port), '-rfbauth', pwfile,
              '-forever', '-shared', '-noxdamage', '-quiet', '-nopw', '-xkb'],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env))
+        self.proxy = EgressProxy(self, self.proxy_port)
+        self.proxy.start()
         args = [
             'chromium', '--kiosk', 'about:blank',  # the guard opens the site once it is watching
+            # every request through the session's proxy (also localhost: <-loopback>); no UDP around it (WebRTC)
+            f'--proxy-server=http://127.0.0.1:{self.proxy_port}', '--proxy-bypass-list=<-loopback>',
+            '--force-webrtc-ip-handling-policy=disable_non_proxied_udp',
             f'--user-data-dir={self.dir}/profile', f'--remote-debugging-port={self.cdp_port}',
             '--remote-debugging-address=127.0.0.1', f'--window-size={w},{h}', '--window-position=0,0',
             '--no-first-run', '--no-default-browser-check', '--disable-translate', '--disable-sync',
             '--disable-features=Translate,PasswordManagerOnboarding,MediaRouter,OptimizationHints',
-            '--password-store=basic', '--disk-cache-size=52428800', '--no-sandbox', '--test-type',
+            '--password-store=basic', '--disk-cache-size=52428800', '--test-type',
             '--disable-gpu', '--disable-background-networking', '--lang=en-US', '--noerrdialogs',
             '--disable-session-crashed-bubble', '--hide-crash-restore-bubble',
         ]
+        if not SANDBOX:
+            args.append('--no-sandbox')
         if self.config.get('ignore_cert'):
             args.append('--ignore-certificate-errors')
         self.procs.append(subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env))
@@ -982,6 +1162,8 @@ class Session:
     def stop(self):
         self.closed.set()
         self.config['password'] = ''
+        if self.proxy:
+            self.proxy.close()
         for p in reversed(self.procs):
             try:
                 p.terminate()
@@ -1122,6 +1304,7 @@ def main():
     faulthandler.register(signal.SIGUSR1, all_threads=True)  # docker kill -s USR1: thread stacks to the log
     if not KEY:
         log('BROWSER_KEY is not set: every request will be refused')
+    log('Chromium sandbox:', 'on' if SANDBOX else 'OFF (user namespaces are not available: see compose/browser.yml)')
     shutil.rmtree(ROOT, ignore_errors=True)
     os.makedirs(ROOT, exist_ok=True)
     signal.signal(signal.SIGTERM, shutdown)
