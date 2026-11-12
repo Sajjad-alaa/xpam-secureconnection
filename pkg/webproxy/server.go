@@ -15,6 +15,21 @@ import (
 
 const shutdownTimeout = 5 * time.Second
 
+// checkedAddressKey carries the address allowTarget checked ("ip:port"): plain HTTP requests are sent to it, never
+// to a fresh lookup of the name (DNS rebinding: a name that answered a public address for the check could answer
+// an internal one for the connection).
+type checkedAddressKey struct{}
+
+func dialChecked(dialer *net.Dialer) func(ctx context.Context, network, address string) (net.Conn, error) {
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		checked, _ := ctx.Value(checkedAddressKey{}).(string)
+		if checked == "" {
+			return nil, errors.New("web proxy: no checked target address")
+		}
+		return dialer.DialContext(ctx, network, checked)
+	}
+}
+
 type Server struct {
 	server      *http.Server
 	transport   *http.Transport
@@ -28,8 +43,10 @@ func NewServer(bindHost, port, recordingRoot, ffmpegPath string, coreService web
 
 	proxy := &Server{
 		transport: &http.Transport{
-			Proxy:                 nil,
-			DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+			Proxy:       nil,
+			DialContext: dialChecked(&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}),
+			// (no connection is reused: one dialled for another session's checked address must not serve this one)
+			DisableKeepAlives:     true,
 			ForceAttemptHTTP2:     true,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ResponseHeaderTimeout: 30 * time.Second,
@@ -106,16 +123,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.serveTunnel(w, r, address)
 		return
 	}
-	s.serveHTTP(w, r)
+	s.serveHTTP(w, r, address)
 }
 
-func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request, address string) {
 	if r.URL.Scheme != "http" && r.URL.Scheme != "https" {
 		http.Error(w, "unsupported target scheme", http.StatusBadRequest)
 		return
 	}
 
-	outbound := r.Clone(r.Context())
+	outbound := r.Clone(context.WithValue(r.Context(), checkedAddressKey{}, address))
 	outbound.RequestURI = ""
 	removeHopByHopHeaders(outbound.Header)
 
