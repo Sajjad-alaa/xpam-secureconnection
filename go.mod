@@ -26,7 +26,6 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jarcoal/httpmock v1.4.2
-	xpam/sdk-go v0.0.0-20260826024103-e9e4992f746b
 	github.com/leonelquinteros/gotext v1.7.2
 	github.com/mattn/go-runewidth v0.0.28
 	github.com/microsoft/go-mssqldb v1.11.0
@@ -48,6 +47,7 @@ require (
 	k8s.io/api v0.36.4
 	k8s.io/apimachinery v0.36.4
 	k8s.io/client-go v0.36.4
+	xpam/sdk-go v0.0.0-20260826024103-e9e4992f746b
 )
 
 require (
@@ -55,7 +55,7 @@ require (
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/ClickHouse/ch-go v0.74.0 // indirect
 	github.com/LeeEirc/httpsig v1.2.1 // indirect
-	github.com/andybalholm/brotli v1.2.2 // indirect
+	github.com/andybalholm/brotli v1.2.7 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/compress v1.20.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
